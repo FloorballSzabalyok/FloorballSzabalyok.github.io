@@ -1237,7 +1237,7 @@ renderMenu() {
             });
         }
     }, 150);
-}
+},
 
 
   next() {
@@ -1469,6 +1469,7 @@ renderMenu() {
 };
 
 app.init();
+
 
 
 
