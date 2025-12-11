@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fb-quiz-v36'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
+const CACHE_NAME = 'fb-quiz-v37'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
