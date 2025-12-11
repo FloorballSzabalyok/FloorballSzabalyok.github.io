@@ -1234,9 +1234,20 @@ const app = {
         const content = document.querySelector(".content");
         if (!content) return;
 
-        const
+        const contentRect = content.getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
 
+        // Ha az alsó széle már látható, nem görgetünk
+        if (actionsRect.bottom <= contentRect.bottom) return;
 
+        const diff = actionsRect.bottom - contentRect.bottom + 16; // kis ráhagyás
+        content.scrollBy({
+          top: diff,
+          behavior: "smooth"
+        });
+      }, 150);
+    }
+  },
 
   next() {
     this.session.idx++;
@@ -1467,6 +1478,7 @@ const app = {
 };
 
 app.init();
+
 
 
 
