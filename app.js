@@ -1167,11 +1167,15 @@ const app = {
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
-    end(win) {
+      end(win) {
+    // End screen megjelenítése
     this.showScreen("s-end");
-    if (!this.session.isMulti) {
-      const scoreEl = document.getElementById("end-score");
-      if (scoreEl) scoreEl.style.display = "block";
+
+    const scoreEl = document.getElementById("end-score");
+    if (!this.session.isMulti && scoreEl) {
+      scoreEl.style.display = "block";
+    } else if (scoreEl) {
+      scoreEl.style.display = "none";
     }
 
     const roastMessages = [
@@ -1211,8 +1215,9 @@ const app = {
 
     const solvedCount = this.session.idx;
     const totalCount = this.session.qList.length;
-    const scoreEl = document.getElementById("end-score");
-    if (scoreEl) scoreEl.innerText = `${solvedCount}/${totalCount}`;
+    if (scoreEl) {
+      scoreEl.innerText = `${solvedCount}/${totalCount}`;
+    }
 
     const actions = document.getElementById("end-actions");
     if (actions) {
@@ -1222,29 +1227,15 @@ const app = {
       btnMenu.innerText = "Vissza a főmenübe";
       btnMenu.onclick = () => this.menu();
       actions.appendChild(btnMenu);
-    }
 
-    // 🔽 automatikus görgetés, hogy a Vissza gomb látszódjon mobilon
-    setTimeout(() => {
-      const endActions = document.getElementById("end-actions");
-      if (endActions && endActions.scrollIntoView) {
-        endActions.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else {
+      // 🔽 FINOM automatikus görgetés:
+      // csak akkor, HA a gomb nincs benne a látható tartományban.
+      setTimeout(() => {
         const content = document.querySelector(".content");
-        if (content && content.scrollTo) {
-          content.scrollTo({
-            top: content.scrollHeight,
-            behavior: "smooth"
-          });
-        } else {
-          window.scrollTo({
-            top: document.body.scrollHeight,
-            behavior: "smooth"
-          });
-        }
-      }
-    }, 150);
-  },
+        if (!content) return;
+
+        const
+
 
 
   next() {
@@ -1419,10 +1410,17 @@ const app = {
     });
   },
 
-  menu() {
+    menu() {
     this.showScreen("s-menu");
     this.renderMenu();
+
+    // Mindig a főmenü tetejére ugrunk a content-ben
+    const content = document.querySelector(".content");
+    if (content && content.scrollTo) {
+      content.scrollTo({ top: 0, behavior: "smooth" });
+    }
   },
+
 
   showScreen(id) {
     if (document.startViewTransition) {
@@ -1469,6 +1467,7 @@ const app = {
 };
 
 app.init();
+
 
 
 
