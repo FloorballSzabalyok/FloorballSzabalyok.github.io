@@ -1399,7 +1399,7 @@ details p {
   }
 
   #end-title {
-    font-size: 1.6rem;      /* kisebb roast szöveg */
+    font-size: 1.3rem;      /* kisebb roast szöveg */
     line-height: 1.25;
     padding: 0 18px;        /* kicsi belső margó, hogy tördeljen */
   }
@@ -1418,4 +1418,5 @@ details p {
     margin-top: 16px;
   }
 }
+
 
