@@ -91,7 +91,14 @@ function seededRandom(a) {
 }
 
 const app = {
-  user: { progress: {}, theme: "light", masterShown: false, streak: 0 },
+  user: {
+  progress: {},
+  theme: "light",
+  masterShown: false,
+  streak: 0,
+  roastIndex: 0   // következő roast sorszáma
+},
+
   session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
 
   // Multi / adatbázis változók
@@ -171,11 +178,13 @@ const app = {
       if (raw) {
         const parsed = JSON.parse(raw);
         this.user = {
-          progress: parsed.progress || {},
-          theme: parsed.theme || "light",
-          masterShown: !!parsed.masterShown,
-          streak: parsed.streak || 0
-        };
+  progress: parsed.progress || {},
+  theme: parsed.theme || "light",
+  masterShown: !!parsed.masterShown,
+  streak: parsed.streak || 0,
+  roastIndex: typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
+};
+
       }
     } catch (e) {
       console.warn("Nem sikerült beolvasni a mentett adatokat:", e);
@@ -1126,10 +1135,11 @@ renderMenu() {
     if (navigator.vibrate) navigator.vibrate(200);
   },
 
-  showFeedback(isOk, q) {
-        const livesEl = document.getElementById("g-lives");
-    if (livesEl) this.renderLives();
-
+    showFeedback(isOk, q) {
+    const livesEl = document.getElementById("g-lives");
+    if (livesEl) {
+      livesEl.innerText = "❤️".repeat(Math.max(this.session.lives, 0));
+    }
     document.getElementById("g-opts").style.display = "none";
 
     const feed = document.getElementById("g-feed");
@@ -1163,92 +1173,108 @@ renderMenu() {
       ${btnHtml}
     `;
 
+    // Maradhat: felhozza a feedback-blokkot
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
     end(win) {
     // End screen megjelenítése
     this.showScreen("s-end");
-    if (!this.session.isMulti) {
-        const scoreEl = document.getElementById("end-score");
-        if (scoreEl) scoreEl.style.display = "block";
-    }
-
-    const roastMessages = [
-        "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
-        "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
-        "Sebaj! A lelátóról is lehet szépen szurkolni.",
-        "A bíró vak volt? Nem, sajnos most te nézted be...",
-        "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
-        "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
-    ];
-
-    const randomMsg = roastMessages[Math.floor(Math.random() * roastMessages.length)];
-    const isWin = !!win;
 
     const iconEl = document.getElementById("end-icon");
     const titleEl = document.getElementById("end-title");
     const msgEl = document.getElementById("end-msg");
     const scoreEl = document.getElementById("end-score");
 
+    if (!this.session.isMulti && scoreEl) {
+      scoreEl.style.display = "block";
+    } else if (scoreEl) {
+      scoreEl.style.display = "none";
+    }
+
+    // Fix sorrendben járjuk végig a roastokat
+    const roastMessages = [
+      "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
+      "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
+      "Sebaj! A lelátóról is lehet szépen szurkolni.",
+      "A bíró vak volt? Nem, sajnos most te nézted be...",
+      "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
+      "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
+    ];
+
+    let randomMsg = roastMessages[0];
+    if (roastMessages.length > 0) {
+      const currentIndex =
+        typeof this.user.roastIndex === "number"
+          ? this.user.roastIndex % roastMessages.length
+          : 0;
+
+      randomMsg = roastMessages[currentIndex];
+
+      // Következő alkalommal a soron következő roast jön
+      this.user.roastIndex = (currentIndex + 1) % roastMessages.length;
+      this.saveUser();
+    }
+
+    const isWin = !!win;
+
     if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
 
     if (isWin) {
-        if (titleEl) titleEl.innerText = "Kör Vége";
-        if (msgEl) {
-            msgEl.innerText = "Szép munka! Csak így tovább!";
-            msgEl.style.color = "";
-            msgEl.style.fontWeight = "600";
-        }
+      if (titleEl) titleEl.innerText = "Kör Vége";
+      if (msgEl) {
+        msgEl.innerText = "Szép munka! Csak így tovább!";
+        msgEl.style.color = "";
+        msgEl.style.fontWeight = "600";
+      }
     } else {
-        if (titleEl) titleEl.innerText = randomMsg;
-        if (msgEl) {
-            msgEl.innerText = "Game Over";
-            msgEl.style.fontWeight = "800";
-            msgEl.style.color = "var(--error)";
-        }
+      if (titleEl) titleEl.innerText = randomMsg;
+      if (msgEl) {
+        msgEl.innerText = "Game Over";
+        msgEl.style.fontWeight = "800";
+        msgEl.style.color = "var(--error)";
+      }
     }
 
     if (scoreEl) {
-        const solvedCount = this.session.idx;
-        const totalCount = this.session.qList.length;
-        scoreEl.innerText = `${solvedCount}/${totalCount}`;
+      const solvedCount = this.session.idx;
+      const totalCount = this.session.qList.length;
+      scoreEl.innerText = `${solvedCount}/${totalCount}`;
     }
 
-    // Gombok újraépítése
     const actions = document.getElementById("end-actions");
     if (actions) {
-        actions.innerHTML = "";
-        const btnMenu = document.createElement("button");
-        btnMenu.className = "btn-main btn-main--secondary";
-        btnMenu.innerText = "Vissza a főmenübe";
-        btnMenu.onclick = () => this.menu();
-        actions.appendChild(btnMenu);
+      actions.innerHTML = "";
+      const btnMenu = document.createElement("button");
+      btnMenu.className = "btn-main btn-main--secondary";
+      btnMenu.innerText = "Vissza a főmenübe";
+      btnMenu.onclick = () => this.menu();
+      actions.appendChild(btnMenu);
     }
 
-    // KIS IDŐ KÉSLELTETÉS UTÁN GÖRGETÉS A GOMBHOZ
-    // (hogy a layout biztosan felépüljön előbb)
+    // Kis késleltetés után finoman legörgetünk a gombig
     setTimeout(() => {
-        const backBtn = document.querySelector("#end-actions .btn-main");
-        if (backBtn) {
-            backBtn.scrollIntoView({
-                behavior: "smooth",
-                block: "end"   // a gomb a képernyő aljához igazodik
-            });
-        }
+      const backBtn = document.querySelector("#end-actions .btn-main");
+      if (backBtn) {
+        backBtn.scrollIntoView({
+          behavior: "smooth",
+          block: "end"
+        });
+      }
     }, 150);
-},
+  },
 
 
   next() {
     this.session.idx++;
     if (this.session.idx < this.session.qList.length) {
       this.renderQ();
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       this.end(true);
     }
   },
+
 
   // --- EGYÉB & PWA / MULTI SEGÉDEK ---
 
@@ -1469,6 +1495,7 @@ renderMenu() {
 };
 
 app.init();
+
 
 
 
