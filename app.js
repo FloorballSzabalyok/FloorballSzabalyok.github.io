@@ -431,7 +431,7 @@ renderMenu() {
         masterInfo.style.display =
             (allCompleted && totalQuestions > 0) ? 'flex' : 'none';
     }
-}
+},
 
 
   // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
