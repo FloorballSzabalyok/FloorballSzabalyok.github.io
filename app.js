@@ -1,13 +1,12 @@
 // --- FIREBASE KONFIGURÁCIÓ ---
-// (AZ ÉLES PROJEKTED ADATAIVAL)
 const firebaseConfig = {
-    apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
-    authDomain: "floorballszabalyok-hu.firebaseapp.com",
-    projectId: "floorballszabalyok-hu",
-    storageBucket: "floorballszabalyok-hu.firebasestorage.app",
-    messagingSenderId: "171694131350",
-    appId: "1:171694131350:web:c713d121fd781fe7df9ab7",
-    databaseURL: "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app"
+  apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
+  authDomain: "floorballszabalyok-hu.firebaseapp.com",
+  databaseURL: "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "floorballszabalyok-hu",
+  storageBucket: "floorballszabalyok-hu.appspot.com",
+  messagingSenderId: "171694131350",
+  appId: "1:171694131350:web:c713d121fd781fe7df9ab7"
 };
 
 /**
@@ -21,8 +20,9 @@ function initFirebaseSafe() {
         : (typeof firebase !== "undefined" ? firebase : null);
 
     if (fb) {
-      fb.initializeApp(firebaseConfig);
-      // Biztos, ami biztos: tegyük ki a window-ra is
+      if (!fb.apps || !fb.apps.length) {
+        fb.initializeApp(firebaseConfig);
+      }
       if (typeof window !== "undefined") {
         window.firebase = fb;
       }
@@ -42,7 +42,7 @@ if (document.readyState === "loading") {
   initFirebaseSafe();
 }
 
-// --- ALAP KONFIG ---
+// --- APP KONFIG ---
 const CONFIG = {
   STORAGE_KEY: "fb_v11_lux",
   WELCOME_KEY: "fb_welcome_seen",
@@ -52,7 +52,19 @@ const CONFIG = {
   ROUND_TIME: 30 // másodperc / kör a multiplayerben
 };
 
-// Seedelt random
+// Témakörök szép megnevezése
+const TOPIC_LABELS = {
+  T00_BASE: "Alapfogalmak",
+  T01_RINK: "Játéktér",
+  T02_TIME: "Játékidő",
+  T03_PART: "Résztvevők",
+  T04_EQUI: "Felszerelés",
+  T05_RST: "Rögzített helyzetek",
+  T06_PEN: "Büntetések",
+  T07_GOAL: "Gólok"
+};
+
+// Seedelt random – hogy multiplayerben ugyanaz legyen a sorrend
 function seededRandom(a) {
   return function () {
     let t = (a += 0x6d2b79f5);
@@ -62,15 +74,14 @@ function seededRandom(a) {
   };
 }
 
-// --- APP OBJEKTUM ---
 const app = {
   user: { progress: {}, theme: "light", masterShown: false, streak: 0 },
   session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
 
+  // Multi / adatbázis változók
   db: null,
   topics: [],
-  questionIndex: {},
-
+  questionIndex: {}, // id -> kérdés objektum
   currentRoomId: null,
   myPlayerId: null, // 'host' vagy 'guest'
   roomRef: null,
@@ -95,7 +106,7 @@ const app = {
 
       const jsonData = await response.json();
       this.db = jsonData.data;
-      this.topics = jsonData.topics || [];
+      this.topics = jsonData.topics || Object.keys(this.db || {});
 
       this.buildQuestionIndex();
       this.loadUser();
@@ -104,7 +115,7 @@ const app = {
       this.checkWelcome();
       this.initInstallButton();
 
-      // Host bezárásakor szoba törlése
+      // Globális takarító listener (ha host zárja be)
       window.addEventListener("beforeunload", () => {
         if (this.myPlayerId === "host" && this.roomRef) {
           this.roomRef.remove().catch((err) =>
@@ -113,7 +124,7 @@ const app = {
         }
       });
 
-      // room param (vendég)
+      // Ha URL-ben room paraméter van, vendégként csatlakozunk (alap validálással)
       const urlParams = new URLSearchParams(window.location.search);
       let roomId = urlParams.get("room");
       if (roomId) {
@@ -137,6 +148,7 @@ const app = {
   },
 
   // --- USER / LOCALSTORAGE ---
+
   loadUser() {
     try {
       const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
@@ -163,6 +175,46 @@ const app = {
     this.updateStatsUI();
   },
 
+  updateStatsUI() {
+    if (!this.db) return;
+
+    let totalQuestions = 0;
+    let totalAnswered = 0;
+
+    (this.topics || []).forEach((topicMeta) => {
+      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const topicData = this.db[topicId] || {};
+
+      CONFIG.LEVELS.forEach((level) => {
+        const qArr = topicData[level] || [];
+        const total = qArr.length;
+        const solvedIds = (this.user.progress[topicId]?.[level] || []);
+        const answered = Math.min(solvedIds.length, total);
+
+        totalQuestions += total;
+        totalAnswered += answered;
+      });
+    });
+
+    const statAnswered = document.getElementById("stat-answered");
+    const statTotal = document.getElementById("stat-total");
+    const statStreak = document.getElementById("stat-streak");
+
+    if (statAnswered) statAnswered.textContent = totalAnswered;
+    if (statTotal) statTotal.textContent = totalQuestions;
+    if (statStreak) statStreak.textContent = this.user.streak || 0;
+
+    const totalBadge = document.getElementById("total-badge");
+    const totalProgressFill = document.getElementById("total-progress-fill");
+    if (totalQuestions > 0) {
+      const percent = Math.round((totalAnswered / totalQuestions) * 100);
+      if (totalBadge) totalBadge.textContent = `${percent}%`;
+      if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
+    }
+  },
+
+  // --- SZINT ÁLLAPOTOK (LOCK / UNLOCK) ---
+
   isLevelCompleted(topicId, level) {
     const topicData = this.db?.[topicId] || {};
     const total = (topicData[level] || []).length;
@@ -177,16 +229,15 @@ const app = {
     return true;
   },
 
-  // --- KÉRDÉS INDEX MULTIHOZ ---
+  // --- KÉRDÉS INDEX ÉPÍTÉSE MULTIHEZ ---
+
   buildQuestionIndex() {
     this.questionIndex = {};
     if (!this.db) return;
 
     const topicsToUse =
       this.topics && this.topics.length
-        ? this.topics.map((t) =>
-            typeof t === "string" ? t : (t.id || t.code || t.key)
-          )
+        ? this.topics.map((t) => (typeof t === "string" ? t : t.id || t.code || t.key))
         : Object.keys(this.db);
 
     topicsToUse.forEach((topicId) => {
@@ -208,33 +259,27 @@ const app = {
     );
   },
 
-  // --- SEGÉD: TÉMA / SZINT FELIRATOK ---
-  getTopicMeta(topicId) {
-    if (!this.topics || !Array.isArray(this.topics)) return null;
-    return (
-      this.topics.find(
-        (t) =>
-          (typeof t === "string" ? t : t.id) === topicId
-      ) || null
-    );
+  // --- SEGÉD: TÉMA NÉV / SZINT CÍMKE ---
+
+  getTopicName(topicId) {
+    return TOPIC_LABELS[topicId] || topicId;
   },
 
   getLevelLabel(level) {
     switch (level) {
       case "L1":
-        return "Kezdő (L1)";
+        return "Kezdő";
       case "L2":
-        return "Haladó (L2)";
+        return "Haladó";
       case "L3":
-        return "Mester (L3)";
+        return "Profi";
       default:
         return level;
     }
   },
 
-  // --- FŐMENÜ / STATISZTIKA ---
-    // --- FŐMENÜ / STATISZTIKA ---
-    // --- FŐMENÜ / STATISZTIKA ---
+  // --- FŐMENÜ / TÉMAKÁRTYÁK ---
+
   renderMenu() {
     if (!this.db || !this.topics) return;
 
@@ -247,13 +292,9 @@ const app = {
     let totalAnswered = 0;
     let allCompleted = true;
 
-    (this.topics || []).forEach((topicMeta) => {
-      const topicId =
-        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-      const topicName =
-        typeof topicMeta === "string"
-          ? topicMeta
-          : (topicMeta.name || topicMeta.id);
+    (this.topics || []).forEach((topicMeta, index) => {
+      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const topicName = `${index + 1}) ${this.getTopicName(topicId)}`;
 
       const topicData = this.db[topicId] || {};
 
@@ -299,85 +340,37 @@ const app = {
       card.className = "topic-card";
       if (mastered) card.classList.add("mastered");
 
-      // NINCS külön gomb, csak % jobb oldalon
       card.innerHTML = `
         <div class="card-top">
-          <div class="t-title">${topicName}</div>
-          <div class="t-badge ${mastered ? "done" : ""}">
-            ${topicPercent}%
+          <div>
+            <div class="t-title">${topicName}</div>
+            <div class="t-badge ${mastered ? "done" : ""}">
+              ${topicPercent}%
+            </div>
           </div>
         </div>
         <div class="progress-track">
           <div class="progress-fill" style="width:${topicPercent}%;"></div>
         </div>
         <div class="topic-level-row">
-          <img src="img/beginner_badge.png" alt="L1 szint" class="topic-level-badge ${l1Done ? "active" : "inactive"}">
-          <img src="img/intermediate_badge.png" alt="L2 szint" class="topic-level-badge ${l2Done ? "active" : "inactive"}">
-          <img src="img/expert_badge.png" alt="L3 szint" class="topic-level-badge ${l3Done ? "active" : "inactive"}">
+          <img src="img/beginner_badge.png" alt="L1 szint" class="topic-level-badge ${
+            l1Done ? "active" : "inactive"
+          }">
+          <img src="img/intermediate_badge.png" alt="L2 szint" class="topic-level-badge ${
+            l2Done ? "active" : "inactive"
+          }">
+          <img src="img/expert_badge.png" alt="L3 szint" class="topic-level-badge ${
+            l3Done ? "active" : "inactive"
+          }">
         </div>
       `;
 
-      // Az egész kártya kattintható → szintek
       card.addEventListener("click", () => this.showLevels(topicId));
 
       container.appendChild(card);
     });
 
-    // Globális stat pill és master jelzés frissítése
-    this.updateStatsUIWithTotals(totalAnswered, totalQuestions, allCompleted);
-  },
-
-  updateStatsUI() {
-    // Akkori állapot alapján újraszámoljuk a globális statokat
-    if (!this.db || !this.topics) return;
-
-    let totalQuestions = 0;
-    let totalAnswered = 0;
-    let allCompleted = true;
-
-    (this.topics || []).forEach((topicMeta) => {
-      const topicId =
-        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-      const topicData = this.db[topicId] || {};
-
-      let topicTotal = 0;
-      let topicAnswered = 0;
-
-      const levelStats = {};
-
-      CONFIG.LEVELS.forEach((level) => {
-        const qArr = topicData[level] || [];
-        const total = qArr.length;
-        const solvedIds = (this.user.progress[topicId]?.[level] || []);
-        const answered = Math.min(solvedIds.length, total);
-
-        levelStats[level] = { total, answered };
-
-        topicTotal += total;
-        topicAnswered += answered;
-      });
-
-      totalQuestions += topicTotal;
-      totalAnswered += topicAnswered;
-
-      const l1Done =
-        levelStats["L1"].total > 0 &&
-        levelStats["L1"].answered >= levelStats["L1"].total;
-      const l2Done =
-        levelStats["L2"].total > 0 &&
-        levelStats["L2"].answered >= levelStats["L2"].total;
-      const l3Done =
-        levelStats["L3"].total > 0 &&
-        levelStats["L3"].answered >= levelStats["L3"].total;
-
-      const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
-      if (!mastered) allCompleted = false;
-    });
-
-    this.updateStatsUIWithTotals(totalAnswered, totalQuestions, allCompleted);
-  },
-
-  updateStatsUIWithTotals(totalAnswered, totalQuestions, allCompleted) {
+    // Globális stat pill a fejlécben
     const statAnswered = document.getElementById("stat-answered");
     const statTotal = document.getElementById("stat-total");
     const statStreak = document.getElementById("stat-streak");
@@ -386,6 +379,7 @@ const app = {
     if (statTotal) statTotal.textContent = totalQuestions;
     if (statStreak) statStreak.textContent = this.user.streak || 0;
 
+    // Összesített progress bar + százalék
     const totalBadge = document.getElementById("total-badge");
     const totalProgressFill = document.getElementById("total-progress-fill");
 
@@ -395,6 +389,7 @@ const app = {
       if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
     }
 
+    // Master jelzés
     const masterInfo = document.getElementById("master-info");
     if (masterInfo) {
       masterInfo.style.display =
@@ -402,7 +397,70 @@ const app = {
     }
   },
 
+  // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
+
+  showLevels(topicId) {
+    if (!this.db) return;
+
+    const topicData = this.db[topicId] || {};
+    const lvlTitle = document.getElementById("lvl-title");
+    const levelContainer = document.getElementById("level-container");
+    if (!lvlTitle || !levelContainer) return;
+
+    const index = (this.topics || []).findIndex(
+      (t) => (typeof t === "string" ? t : t.id) === topicId
+    );
+    const niceName = this.getTopicName(topicId);
+    const prefix = index >= 0 ? `${index + 1}) ` : "";
+
+    lvlTitle.textContent = `${prefix}${niceName}`;
+    levelContainer.innerHTML = "";
+
+    CONFIG.LEVELS.forEach((level) => {
+      const qArr = topicData[level] || [];
+      const total = qArr.length;
+      const solvedIds = (this.user.progress[topicId]?.[level] || []);
+      const answered = Math.min(solvedIds.length, total);
+
+      const unlocked = this.isLevelUnlocked(topicId, level);
+      const done = this.isLevelCompleted(topicId, level);
+
+      const card = document.createElement("div");
+      card.className = "level-card";
+      if (!unlocked) card.classList.add("locked");
+
+      card.innerHTML = `
+        <div>
+          <div class="l-name">${this.getLevelLabel(level)}</div>
+          <div class="l-stat">${answered} / ${total}</div>
+        </div>
+        <button type="button" class="btn-play ${done ? "done" : ""}" ${
+        unlocked ? "" : "disabled"
+      }>
+          ${unlocked ? "Indítás" : "Zárolva"}
+        </button>
+      `;
+
+      const btn = card.querySelector(".btn-play");
+      if (btn && unlocked) {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.start(topicId, level, false);
+        });
+      }
+
+      card.addEventListener("click", () => {
+        if (unlocked) this.start(topicId, level, false);
+      });
+
+      levelContainer.appendChild(card);
+    });
+
+    this.showScreen("s-levels");
+  },
+
   // --- WELCOME MODAL ---
+
   checkWelcome() {
     const seen = localStorage.getItem(CONFIG.WELCOME_KEY);
     const modal = document.getElementById("welcome-modal");
@@ -427,7 +485,8 @@ const app = {
     }
   },
 
-  // --- MULTIPLAYER ---
+  // --- MULTIPLAYER (KÖR-ALAPÚ, DETERMINISZTIKUS KÉRDÉSLISTÁVAL) ---
+
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
       alert("A multiplayerhez internet és érvényes Firebase beállítás szükséges!");
@@ -445,6 +504,7 @@ const app = {
     const db = firebase.database();
     this.roomRef = db.ref("rooms/" + roomId);
 
+    // Összes kérdés ID összegyűjtése
     const allQuestionIds = Object.keys(this.questionIndex);
     if (allQuestionIds.length < 2) {
       alert("Nincs elég kérdés a multiplayer módhoz.");
@@ -454,10 +514,12 @@ const app = {
       return;
     }
 
+    // Keverés
     const shuffledIds = this.shuffle([...allQuestionIds]);
     const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, shuffledIds.length);
     const questionsForRoom = shuffledIds.slice(0, totalRounds);
 
+    // Seed (a válaszlehetőségek sorrendjéhez)
     const seed = Math.floor(Math.random() * 1e9);
 
     const initialRoomState = {
@@ -466,8 +528,6 @@ const app = {
       round: 1,
       hostAnswer: "pending",
       guestAnswer: "pending",
-      hostAlive: true,
-      guestAlive: true,
       questions: questionsForRoom,
       createdAt: firebase.database.ServerValue.TIMESTAMP
     };
@@ -475,12 +535,6 @@ const app = {
     this.roomRef
       .set(initialRoomState)
       .then(() => {
-        try {
-          this.roomRef.child("hostAlive").onDisconnect().set(false);
-        } catch (e) {
-          console.warn("onDisconnect hostAlive hiba:", e);
-        }
-
         const hostModal = document.getElementById("host-modal");
         if (hostModal) hostModal.classList.add("open");
 
@@ -509,6 +563,7 @@ const app = {
     const db = firebase.database();
     this.roomRef = db.ref("rooms/" + roomId);
 
+    // Ellenőrizzük, hogy létezik-e a szoba
     this.roomRef
       .once("value")
       .then((snapshot) => {
@@ -548,14 +603,8 @@ const app = {
 
     if (!this.roomRef) return;
 
-    try {
-      this.roomRef.child("guestAlive").onDisconnect().set(false);
-    } catch (e) {
-      console.warn("onDisconnect guestAlive hiba:", e);
-    }
-
     this.roomRef
-      .update({ status: "playing", guestAlive: true })
+      .update({ status: "playing" })
       .then(() => {
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
@@ -592,19 +641,7 @@ const app = {
       return;
     }
 
-    if (this.session.isMulti && data.status === "playing") {
-      const otherAlive =
-        this.myPlayerId === "host" ? data.guestAlive : data.hostAlive;
-      if (otherAlive === false) {
-        this.clearWaitingTimeout();
-        this.endMultiGame(
-          "draw",
-          "Az ellenfeled megszakította a kapcsolatot. A párbajt lezártuk."
-        );
-        return;
-      }
-    }
-
+    // Játék indítása
     if (data.status === "playing") {
       const hostModal = document.getElementById("host-modal");
       if (hostModal && hostModal.classList.contains("open")) {
@@ -615,6 +652,7 @@ const app = {
       }
     }
 
+    // Kör állapot / várakozás kezelése
     if (this.session.isMulti && data.round === this.session.roundNumber) {
       const myAns =
         this.myPlayerId === "host" ? data.hostAnswer : data.guestAnswer;
@@ -623,6 +661,7 @@ const app = {
 
       const waitingModal = document.getElementById("waiting-modal");
 
+      // Várakozó ablak
       if (myAns !== "pending" && oppAns === "pending") {
         if (waitingModal) waitingModal.classList.add("open");
 
@@ -639,6 +678,7 @@ const app = {
         this.clearWaitingTimeout();
       }
 
+      // Kör vége kiértékelés
       if (
         data.hostAnswer !== "pending" &&
         data.guestAnswer !== "pending"
@@ -648,6 +688,7 @@ const app = {
       }
     }
 
+    // Új kör indítása
     if (this.session.isMulti && data.round > this.session.roundNumber) {
       this.startNextMultiRound(data.round);
     }
@@ -677,7 +718,7 @@ const app = {
   },
 
   evaluateRound(hAns, gAns, currentRound) {
-    if (this.lastEvaluatedRound === currentRound) return;
+    if (this.lastEvaluatedRound === currentRound) return; // Dupla futás ellen
     this.lastEvaluatedRound = currentRound;
     this.stopTimer();
 
@@ -766,26 +807,25 @@ const app = {
     this.myPlayerId = null;
   },
 
-  // --- GAME ENGINE: SINGLE + MULTI ---
+  // --- GAME ENGINE ---
+
   /**
-   * start(topic, level, isMulti = false, questionIds = null)
-   *  - single: topic + level határozza meg a kérdéslistát
-   *  - multi:  questionIds alapján építjük a listát (ha meg van adva)
+   * Single + Multi közös indító.
+   * Multi esetén, ha questionIds adott, akkor abból építjük a qList-et (room.questions).
    */
   start(topic, level, isMulti = false, questionIds = null) {
     let qList = [];
 
     if (isMulti) {
       if (Array.isArray(questionIds) && questionIds.length) {
-        questionIds.forEach((id) => {
-          const q = this.questionIndex[id];
-          if (q) qList.push(q);
-        });
+        qList = questionIds
+          .map((id) => this.questionIndex[id])
+          .filter(Boolean);
       } else {
+        // Fallback: minden kérdés összeöntése (nem ideális, de ne dőljön el az app)
         const allTopicsArr = this.topics || [];
         allTopicsArr.forEach((tMeta) => {
-          const tId =
-            typeof tMeta === "string" ? tMeta : tMeta.id;
+          const tId = typeof tMeta === "string" ? tMeta : tMeta.id;
           CONFIG.LEVELS.forEach((lvl) => {
             if (this.db[tId] && this.db[tId][lvl]) {
               qList = qList.concat(this.db[tId][lvl]);
@@ -794,6 +834,7 @@ const app = {
         });
       }
     } else {
+      // SINGLE PLAYER: szintzár ellenőrzése
       if (!this.isLevelUnlocked(topic, level)) {
         alert("Először fejezd be az előző szintet, utána léphetsz tovább.");
         return;
@@ -804,6 +845,7 @@ const app = {
       qList = [...allQ];
     }
 
+    // Keverés
     const randomFunc =
       isMulti && this.seed ? seededRandom(this.seed) : Math.random;
     let currentIndex = qList.length,
@@ -818,7 +860,7 @@ const app = {
     }
 
     if (!isMulti) {
-      const solvedIDs = (this.user.progress[topic]?.[level]) || [];
+      const solvedIDs = this.user.progress[topic]?.[level] || [];
       const toPlay = qList.filter((q) => !solvedIDs.includes(q.id));
 
       if (toPlay.length === 0) {
@@ -830,7 +872,7 @@ const app = {
           this.session = {
             topic,
             level,
-            qList: this.shuffle([...qList]),
+            qList: this.shuffle([...qList]), // sima random gyakorláshoz
             idx: 0,
             lives: 3
           };
@@ -842,7 +884,11 @@ const app = {
 
       this.session = { topic, level, qList: toPlay, idx: 0, lives: 3 };
     } else {
-      const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
+      // MULTI: dinamikus körszám, ne fogyjon el a kérdés
+      const totalRounds = Math.min(
+        CONFIG.MULTI_MAX_QUESTIONS,
+        qList.length
+      );
       qList = qList.slice(0, totalRounds);
 
       this.session = {
@@ -863,78 +909,6 @@ const app = {
     this.renderQ();
   },
 
-  // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
-    // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
-    // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
-  showLevels(topicId) {
-    const topicMeta = this.getTopicMeta(topicId);
-    const topicName =
-      typeof topicMeta === "string"
-        ? topicMeta
-        : (topicMeta?.name || topicId);
-
-    const titleEl = document.getElementById("lvl-title");
-    if (titleEl) titleEl.textContent = topicName;
-
-    const cont = document.getElementById("level-container");
-    if (!cont) return;
-    cont.innerHTML = "";
-
-    const topicData = this.db[topicId] || {};
-
-    CONFIG.LEVELS.forEach((level) => {
-      const qArr = topicData[level] || [];
-      const total = qArr.length;
-      const solvedIds = (this.user.progress[topicId]?.[level] || []);
-      const answered = Math.min(solvedIds.length, total);
-      const completed = total > 0 && answered >= total;
-
-      let unlocked = false;
-      if (level === "L1") unlocked = true;
-      if (level === "L2") unlocked = this.isLevelCompleted(topicId, "L1");
-      if (level === "L3") unlocked = this.isLevelCompleted(topicId, "L2");
-
-      const levelLabel = this.getLevelLabel(level);
-
-      const card = document.createElement("div");
-      card.className = "level-card";
-      if (!unlocked) card.classList.add("locked");
-
-      // Szöveg egyszerű: csak 0 / 43
-      const btnDisabled = (!unlocked || total === 0);
-      const btnLabel = btnDisabled ? "Zárolva" : "Indítás";
-
-      card.innerHTML = `
-        <div>
-          <div class="l-name">${levelLabel}</div>
-          <div class="l-stat">
-            ${answered} / ${total}
-          </div>
-        </div>
-        <button type="button"
-                class="btn-play ${completed ? "done" : ""}"
-                ${btnDisabled ? "disabled" : ""}>
-          ${btnLabel}
-        </button>
-      `;
-
-      if (!btnDisabled) {
-        const startLevel = () => this.start(topicId, level, false);
-        const playBtn = card.querySelector(".btn-play");
-        playBtn.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          startLevel();
-        });
-        card.addEventListener("click", startLevel);
-      }
-
-      cont.appendChild(card);
-    });
-
-    this.showScreen("s-levels");
-  },
-
-  // --- KÉRDÉSEK KIRAJZOLÁSA ---
   renderQ() {
     const q = this.session.qList[this.session.idx];
     if (!q) {
@@ -1006,11 +980,11 @@ const app = {
       progEl.style.width = percent + "%";
     }
 
+    // Válaszok keverése – multi esetén seedelt, hogy mindkét félnek ugyanaz legyen
     let indices = [0, 1, 2];
-    const seedBase =
-      this.session.isMulti
-        ? this.seed + this.session.idx + 999
-        : Math.random();
+    const seedBase = this.session.isMulti
+      ? this.seed + this.session.idx + 999
+      : Math.random();
     const randomFunc = this.session.isMulti
       ? seededRandom(seedBase)
       : Math.random;
@@ -1222,6 +1196,7 @@ const app = {
   },
 
   // --- EGYÉB & PWA / MULTI SEGÉDEK ---
+
   cancelHost() {
     if (this.roomRef) {
       this.roomRef
