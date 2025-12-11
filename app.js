@@ -52,6 +52,22 @@ const CONFIG = {
   ROUND_TIME: 30 // másodperc / kör a multiplayerben
 };
 
+const LIFE_SVG = `
+<svg class="life-icon" viewBox="0 0 100 100" fill="none"
+     xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="6"/>
+  <circle cx="50" cy="50" r="9" fill="currentColor"/>
+  <circle cx="50" cy="18" r="7" fill="currentColor"/>
+  <circle cx="50" cy="82" r="7" fill="currentColor"/>
+  <circle cx="18" cy="50" r="7" fill="currentColor"/>
+  <circle cx="82" cy="50" r="7" fill="currentColor"/>
+  <circle cx="73" cy="27" r="6" fill="currentColor"/>
+  <circle cx="27" cy="27" r="6" fill="currentColor"/>
+  <circle cx="73" cy="73" r="6" fill="currentColor"/>
+  <circle cx="27" cy="73" r="6" fill="currentColor"/>
+</svg>`;
+
+
 // Témakörök szép megnevezése
 const TOPIC_LABELS = {
   T00_BASE: "Alapfogalmak",
@@ -175,6 +191,19 @@ const app = {
     this.updateStatsUI();
   },
 
+  renderLives() {
+    const livesEl = document.getElementById("g-lives");
+    if (!livesEl) return;
+
+    const lives = Math.max(this.session.lives, 0);
+    livesEl.innerHTML = "";
+
+    for (let i = 0; i < lives; i++) {
+      livesEl.insertAdjacentHTML("beforeend", LIFE_SVG);
+    }
+  },
+
+  
   updateStatsUI() {
     if (!this.db) return;
 
@@ -944,11 +973,12 @@ const app = {
       if (qRemEl) qRemEl.style.display = "none";
 
       this.startTimer();
-    } else {
+        } else {
       if (livesEl) {
         livesEl.style.display = "block";
-        livesEl.innerText = "❤️".repeat(this.session.lives);
+        this.renderLives();
       }
+  
       const timerBar = document.getElementById("timer-bar");
       const multiBadge = document.getElementById("multi-badge");
       const qLabel = document.getElementById("q-label");
@@ -1098,9 +1128,9 @@ const app = {
   },
 
   showFeedback(isOk, q) {
-    const livesEl = document.getElementById("g-lives");
-    if (livesEl)
-      livesEl.innerText = "❤️".repeat(Math.max(this.session.lives, 0));
+        const livesEl = document.getElementById("g-lives");
+    if (livesEl) this.renderLives();
+
     document.getElementById("g-opts").style.display = "none";
 
     const feed = document.getElementById("g-feed");
@@ -1393,3 +1423,4 @@ const app = {
 };
 
 app.init();
+
