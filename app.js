@@ -1167,10 +1167,12 @@ const app = {
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
-  end(win) {
+    end(win) {
     this.showScreen("s-end");
-    if (!this.session.isMulti)
-      document.getElementById("end-score").style.display = "block";
+    if (!this.session.isMulti) {
+      const scoreEl = document.getElementById("end-score");
+      if (scoreEl) scoreEl.style.display = "block";
+    }
 
     const roastMessages = [
       "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
@@ -1185,35 +1187,65 @@ const app = {
       roastMessages[Math.floor(Math.random() * roastMessages.length)];
     const isWin = !!win;
 
-    document.getElementById("end-icon").innerText = isWin ? "🎉" : "💀";
+    const iconEl = document.getElementById("end-icon");
     const titleEl = document.getElementById("end-title");
     const msgEl = document.getElementById("end-msg");
 
+    if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
+
     if (isWin) {
-      titleEl.innerText = "Kör Vége";
-      msgEl.innerText = "Szép munka! Csak így tovább!";
-      msgEl.style.color = "";
+      if (titleEl) titleEl.innerText = "Kör Vége";
+      if (msgEl) {
+        msgEl.innerText = "Szép munka! Csak így tovább!";
+        msgEl.style.color = "";
+        msgEl.style.fontWeight = "400";
+      }
     } else {
-      titleEl.innerText = randomMsg;
-      msgEl.innerText = "Game Over";
-      msgEl.style.fontWeight = "800";
-      msgEl.style.color = "var(--error)";
+      if (titleEl) titleEl.innerText = randomMsg;
+      if (msgEl) {
+        msgEl.innerText = "Game Over";
+        msgEl.style.fontWeight = "800";
+        msgEl.style.color = "var(--error)";
+      }
     }
 
     const solvedCount = this.session.idx;
     const totalCount = this.session.qList.length;
-    document.getElementById(
-      "end-score"
-    ).innerText = `${solvedCount}/${totalCount}`;
+    const scoreEl = document.getElementById("end-score");
+    if (scoreEl) scoreEl.innerText = `${solvedCount}/${totalCount}`;
 
     const actions = document.getElementById("end-actions");
-    actions.innerHTML = "";
-    const btnMenu = document.createElement("button");
-    btnMenu.className = "btn-main btn-main--secondary";
-    btnMenu.innerText = "Vissza a főmenübe";
-    btnMenu.onclick = () => this.menu();
-    actions.appendChild(btnMenu);
+    if (actions) {
+      actions.innerHTML = "";
+      const btnMenu = document.createElement("button");
+      btnMenu.className = "btn-main btn-main--secondary";
+      btnMenu.innerText = "Vissza a főmenübe";
+      btnMenu.onclick = () => this.menu();
+      actions.appendChild(btnMenu);
+    }
+
+    // 🔽 automatikus görgetés, hogy a Vissza gomb látszódjon mobilon
+    setTimeout(() => {
+      const endActions = document.getElementById("end-actions");
+      if (endActions && endActions.scrollIntoView) {
+        endActions.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        const content = document.querySelector(".content");
+        if (content && content.scrollTo) {
+          content.scrollTo({
+            top: content.scrollHeight,
+            behavior: "smooth"
+          });
+        } else {
+          window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth"
+          });
+        }
+      }
+    }, 150);
   },
+
 
   next() {
     this.session.idx++;
@@ -1437,5 +1469,6 @@ const app = {
 };
 
 app.init();
+
 
 
