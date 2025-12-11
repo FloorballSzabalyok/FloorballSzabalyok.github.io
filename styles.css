@@ -1375,48 +1375,53 @@ details p {
   box-shadow: 0 6px 18px rgba(79, 172, 254, 0.35);
 }
 
-/* --- END SCREEN TIPOGRÁFIA FINOMHANGOLÁS --- */
+/* --- END SCREEN KOMPAKT MOBIL NÉZET --- */
 
-/* Alap méretek (desktop / nagyobb nézet) */
+/* Alap (desktop / nagyobb kijelző) – kicsit visszafogottabb így is */
 #end-title {
-  font-size: 2.3rem;
+  font-size: 2rem;
   line-height: 1.2;
 }
 
 #end-msg {
-  font-size: 1.1rem;
+  font-size: 1rem;
   margin-top: 0.5rem;
 }
 
-/* Kisebb képernyők: mobil optimalizálás */
+/* Mobil optimalizálás: nagyon húzzuk össze a blokkot */
 @media (max-width: 480px) {
   #s-end {
-    padding-top: 24px;
+    padding-top: 16px !important;
   }
 
   #end-icon {
-    margin-bottom: 12px;
+    margin-bottom: 8px !important;
   }
 
   #end-title {
-    font-size: 1.3rem;      /* kisebb roast szöveg */
-    line-height: 1.25;
-    padding: 0 18px;        /* kicsi belső margó, hogy tördeljen */
+    font-size: 1.3rem !important;   /* ténylegesen kisebb */
+    line-height: 1.25 !important;
+    padding: 0 16px !important;
   }
 
   #end-msg {
-    font-size: 0.95rem;
-    margin-top: 6px;
+    font-size: 0.9rem !important;
+    margin-top: 4px !important;
   }
 
   #end-score {
-    margin-top: 16px;
-    margin-bottom: 16px;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
   }
 
   #end-actions {
-    margin-top: 16px;
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #end-actions .btn-main {
+    /* picit kisebb gomb, hogy magasban maradjon */
+    padding: 10px 18px !important;
+    font-size: 0.95rem !important;
   }
 }
-
-
