@@ -796,53 +796,89 @@ renderMenu() {
     this.renderQ();
   },
 
-  endMultiGame(result, customMsg) {
-    this.showScreen("s-end");
-    this.stopTimer();
-    this.clearWaitingTimeout();
+    endMultiGame(result, customMsg) {
+  this.showScreen("s-end");
+  this.stopTimer();
+  this.clearWaitingTimeout();
 
-    const titleEl = document.getElementById("end-title");
-    const msgEl = document.getElementById("end-msg");
-    const iconEl = document.getElementById("end-icon");
-    const scoreEl = document.getElementById("end-score");
-    if (scoreEl) scoreEl.style.display = "none";
+  const titleEl = document.getElementById("end-title");
+  const msgEl   = document.getElementById("end-msg");
+  const iconEl  = document.getElementById("end-icon");
+  const scoreEl = document.getElementById("end-score");
 
-    if (result === "win") {
-      titleEl.innerText = "GYŐZELEM! 🏆";
-      msgEl.innerText =
-        customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
+  // Multiplayerben nem mutatjuk a pontszám kártyát
+  if (scoreEl) scoreEl.style.display = "none";
+
+  // Csak a felső ikonban van emoji, a cím / szöveg tiszta
+  if (result === "win") {
+    if (titleEl) titleEl.innerText = "GYŐZELEM!";
+    if (msgEl) {
+      msgEl.innerText = customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
       msgEl.style.color = "var(--success)";
-      iconEl.innerText = "🎉";
-    } else if (result === "lose") {
-      titleEl.innerText = "VERESÉG 💀";
-      msgEl.innerText =
-        customMsg || "Te hibáztál (vagy lassú voltál).";
+    }
+    if (iconEl) iconEl.innerText = "🎉";
+  } else if (result === "lose") {
+    if (titleEl) titleEl.innerText = "VERESÉG";
+    if (msgEl) {
+      msgEl.innerText = customMsg || "Te hibáztál (vagy lassú voltál).";
       msgEl.style.color = "var(--error)";
-      iconEl.innerText = "💀";
-    } else {
-      titleEl.innerText = "DÖNTETLEN 🤝";
+    }
+    if (iconEl) iconEl.innerText = "💀";
+  } else {
+    if (titleEl) titleEl.innerText = "DÖNTETLEN";
+    if (msgEl) {
       msgEl.innerText = customMsg || "Döntetlen játék.";
       msgEl.style.color = "var(--text-main)";
-      iconEl.innerText = "🤝";
     }
+    if (iconEl) iconEl.innerText = "🤝";
+  }
 
-    if (this.roomRef) {
-      this.roomRef.off();
-      if (this.myPlayerId === "host") {
-        setTimeout(() => {
-          this.roomRef &&
-            this.roomRef
-              .remove()
-              .catch((err) =>
-                console.error("Szoba törlés hiba (endMultiGame):", err)
-              );
-        }, 5000);
-      }
-      this.roomRef = null;
+  // Gombok: Új párbaj + Vissza a főmenübe
+  const actions = document.getElementById("end-actions");
+  if (actions) {
+    actions.innerHTML = "";
+
+    const btnRematch = document.createElement("button");
+    btnRematch.className = "btn-main";
+    btnRematch.innerText = "Új párbaj indítása";
+    btnRematch.onclick = () => this.startChallengeMode();
+    actions.appendChild(btnRematch);
+
+    const btnMenu = document.createElement("button");
+    btnMenu.className = "btn-main btn-main--secondary";
+    btnMenu.innerText = "Vissza a főmenübe";
+    btnMenu.onclick = () => this.menu();
+    actions.appendChild(btnMenu);
+
+    // Finom scroll a gombokhoz
+    setTimeout(() => {
+      actions.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+    }, 150);
+  }
+
+  // Szoba lezárása / takarítás
+  if (this.roomRef) {
+    this.roomRef.off();
+    if (this.myPlayerId === "host") {
+      setTimeout(() => {
+        this.roomRef &&
+          this.roomRef
+            .remove()
+            .catch((err) =>
+              console.error("Szoba törlés hiba (endMultiGame):", err)
+            );
+      }, 5000);
     }
-    this.currentRoomId = null;
-    this.myPlayerId = null;
-  },
+    this.roomRef = null;
+  }
+  this.currentRoomId = null;
+  this.myPlayerId = null;
+},
+
+
 
   // --- GAME ENGINE ---
 
@@ -1178,91 +1214,88 @@ renderMenu() {
   },
 
     end(win) {
-    // End screen megjelenítése
-    this.showScreen("s-end");
+  this.showScreen("s-end");
 
-    const iconEl = document.getElementById("end-icon");
-    const titleEl = document.getElementById("end-title");
-    const msgEl = document.getElementById("end-msg");
-    const scoreEl = document.getElementById("end-score");
+  const iconEl  = document.getElementById("end-icon");
+  const titleEl = document.getElementById("end-title");
+  const msgEl   = document.getElementById("end-msg");
+  const scoreEl = document.getElementById("end-score");
 
-    if (!this.session.isMulti && scoreEl) {
-      scoreEl.style.display = "block";
-    } else if (scoreEl) {
-      scoreEl.style.display = "none";
+  // Single playernél pontszám látszik, multi esetben nem
+  if (!this.session.isMulti && scoreEl) {
+    scoreEl.style.display = "block";
+  } else if (scoreEl) {
+    scoreEl.style.display = "none";
+  }
+
+  // Roast message-ek – emoji NINCS bennük
+  const roastMessages = [
+    "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
+    "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
+    "Sebaj! A lelátóról is lehet szépen szurkolni.",
+    "A bíró vak volt? Nem, sajnos most te nézted be...",
+    "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
+    "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
+  ];
+
+  let roastText = roastMessages[0];
+  if (roastMessages.length > 0) {
+    const currentIndex =
+      typeof this.user.roastIndex === "number"
+        ? this.user.roastIndex % roastMessages.length
+        : 0;
+
+    roastText = roastMessages[currentIndex];
+
+    this.user.roastIndex = (currentIndex + 1) % roastMessages.length;
+    this.saveUser();
+  }
+
+  const isWin = !!win;
+
+  // Csak a felső ikonban van emoji
+  if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
+
+  if (isWin) {
+    if (titleEl) titleEl.innerText = "Kör vége";
+    if (msgEl) {
+      msgEl.innerText = "Szép munka! Csak így tovább!";
+      msgEl.style.color = "";
+      msgEl.style.fontWeight = "600";
     }
-
-    // Fix sorrendben járjuk végig a roastokat
-    const roastMessages = [
-      "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
-      "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
-      "Sebaj! A lelátóról is lehet szépen szurkolni.",
-      "A bíró vak volt? Nem, sajnos most te nézted be...",
-      "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
-      "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
-    ];
-
-    let randomMsg = roastMessages[0];
-    if (roastMessages.length > 0) {
-      const currentIndex =
-        typeof this.user.roastIndex === "number"
-          ? this.user.roastIndex % roastMessages.length
-          : 0;
-
-      randomMsg = roastMessages[currentIndex];
-
-      // Következő alkalommal a soron következő roast jön
-      this.user.roastIndex = (currentIndex + 1) % roastMessages.length;
-      this.saveUser();
+  } else {
+    if (titleEl) titleEl.innerText = roastText;
+    if (msgEl) {
+      msgEl.innerText = "Game Over";
+      msgEl.style.fontWeight = "800";
+      msgEl.style.color = "var(--error)";
     }
+  }
 
-    const isWin = !!win;
+  if (scoreEl && !this.session.isMulti) {
+    const solvedCount = this.session.idx;
+    const totalCount  = this.session.qList.length;
+    scoreEl.innerText = `${solvedCount}/${totalCount}`;
+  }
 
-    if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
+  const actions = document.getElementById("end-actions");
+  if (actions) {
+    actions.innerHTML = "";
+    const btnMenu = document.createElement("button");
+    btnMenu.className = "btn-main btn-main--secondary";
+    btnMenu.innerText = "Vissza a főmenübe";
+    btnMenu.onclick = () => this.menu();
+    actions.appendChild(btnMenu);
 
-    if (isWin) {
-      if (titleEl) titleEl.innerText = "Kör Vége";
-      if (msgEl) {
-        msgEl.innerText = "Szép munka! Csak így tovább!";
-        msgEl.style.color = "";
-        msgEl.style.fontWeight = "600";
-      }
-    } else {
-      if (titleEl) titleEl.innerText = randomMsg;
-      if (msgEl) {
-        msgEl.innerText = "Game Over";
-        msgEl.style.fontWeight = "800";
-        msgEl.style.color = "var(--error)";
-      }
-    }
-
-    if (scoreEl) {
-      const solvedCount = this.session.idx;
-      const totalCount = this.session.qList.length;
-      scoreEl.innerText = `${solvedCount}/${totalCount}`;
-    }
-
-    const actions = document.getElementById("end-actions");
-    if (actions) {
-      actions.innerHTML = "";
-      const btnMenu = document.createElement("button");
-      btnMenu.className = "btn-main btn-main--secondary";
-      btnMenu.innerText = "Vissza a főmenübe";
-      btnMenu.onclick = () => this.menu();
-      actions.appendChild(btnMenu);
-    }
-
-    // Kis késleltetés után finoman legörgetünk a gombig
     setTimeout(() => {
-      const backBtn = document.querySelector("#end-actions .btn-main");
-      if (backBtn) {
-        backBtn.scrollIntoView({
-          behavior: "smooth",
-          block: "end"
-        });
-      }
+      btnMenu.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
     }, 150);
-  },
+  }
+},
+
 
 
   next() {
@@ -1495,6 +1528,7 @@ renderMenu() {
 };
 
 app.init();
+
 
 
 
