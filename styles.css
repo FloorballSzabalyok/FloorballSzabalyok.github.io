@@ -1388,7 +1388,8 @@ details p {
   margin-top: 0.5rem;
 }
 
-/* Mobil optimalizálás: nagyon húzzuk össze a blokkot */
+/* --- END SCREEN KOMPAKT MOBIL NÉZET – roast nagyobb, score kisebb --- */
+
 @media (max-width: 480px) {
   #s-end {
     padding-top: 16px !important;
@@ -1398,20 +1399,26 @@ details p {
     margin-bottom: 8px !important;
   }
 
+  /* ROAST SZÖVEG – EZ LEGYEN A FŐ HANGSÚLY */
   #end-title {
-    font-size: 1.3rem !important;   /* ténylegesen kisebb */
+    font-size: 1.6rem !important;   /* nagyobb roast */
     line-height: 1.25 !important;
     padding: 0 16px !important;
+    text-align: center;
   }
 
+  /* "Game Over" */
   #end-msg {
     font-size: 0.9rem !important;
     margin-top: 4px !important;
   }
 
+  /* SCORE KÁRTYA – KISEBB BETŰ + KEVESEBB PADDING, HOGY NE FOGJON SOK HELYET */
   #end-score {
+    font-size: 2rem !important;          /* kisebb 3/43 */
     margin-top: 10px !important;
     margin-bottom: 10px !important;
+    padding: 12px 0 !important;          /* alacsonyabb kártya */
   }
 
   #end-actions {
@@ -1420,8 +1427,8 @@ details p {
   }
 
   #end-actions .btn-main {
-    /* picit kisebb gomb, hogy magasban maradjon */
     padding: 10px 18px !important;
     font-size: 0.95rem !important;
   }
 }
+
