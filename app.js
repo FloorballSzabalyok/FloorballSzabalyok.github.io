@@ -1354,9 +1354,23 @@ const app = {
     if (modal) modal.classList.toggle("open");
   },
 
-  showRules() {
+ showRules() {
+  const pdfUrl = "Floorball_Jatekszabalyok_2022_FINAL.pdf";
+
+  // Egyszerű desktop-detektálás: nagyobb nézet + nem érintőkijelzőre optimalizált mobil
+  const isDesktop =
+    window.innerWidth >= 900 &&
+    !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isDesktop) {
+    // Laptop / PC: PDF megnyitása teljes fülön
+    window.open(pdfUrl, "_blank");
+  } else {
+    // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
     this.showScreen("s-rules");
-  },
+  }
+},
+
 
   showMasterScreen() {
     this.showScreen("s-master");
@@ -1423,4 +1437,5 @@ const app = {
 };
 
 app.init();
+
 
