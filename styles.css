@@ -1342,3 +1342,14 @@ details p {
     text-align: left;
   }
 }
+
+.dashboard-cta {
+  margin-top: 16px;
+}
+
+.btn-main--compact {
+  margin-top: 0;
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 18px rgba(79, 172, 254, 0.35);
+}

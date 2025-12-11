@@ -29,44 +29,59 @@
 <div class="app-container">
 
   <div class="dashboard-header">
-    <div class="dashboard-nav">
-      <button class="icon-btn" onclick="app.menu()" aria-label="Főmenü" title="Főmenü">
-        <i class="ph-bold ph-house"></i>
+  <div class="dashboard-nav">
+    <button class="icon-btn" onclick="app.menu()" aria-label="Főmenü">
+      <i class="ph-bold ph-house"></i>
+    </button>
+    <div class="app-title" onclick="app.menu()">FloorballSzabályok</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="install-btn" onclick="app.triggerInstall()" style="display: none;">
+        <i class="ph-bold ph-download-simple"></i>
       </button>
-      <div class="app-title" onclick="app.menu()">FloorballSzabályok</div>
-      <div class="header-actions">
-        <button class="icon-btn" id="install-btn" onclick="app.triggerInstall()" style="display: none;" aria-label="Telepítés" title="Telepítés">
-          <i class="ph-bold ph-download-simple"></i>
-        </button>
-        <button class="icon-btn" id="theme-btn" onclick="app.toggleTheme()" aria-label="Téma váltása" title="Téma váltása">
-          <i id="theme-icon" class="ph-bold ph-moon"></i>
-        </button>
-        <button class="icon-btn" onclick="app.showRules()" aria-label="Szabálykönyv" title="Szabálykönyv">
-          <i class="ph-bold ph-book-open-text"></i>
-        </button>
-        <button class="icon-btn" onclick="app.toggleInfo()" aria-label="Információk" title="Információk">
-          <i class="ph-bold ph-info"></i>
-        </button>
-        <button class="icon-btn" onclick="app.toggleResetModal()" aria-label="Adatok törlése" title="Adatok törlése">
-          <i class="ph-bold ph-trash"></i>
-        </button>
-      </div>
-    </div>
-    <div class="dashboard-stats-container">
-      <div class="stat-pill">
-        <span class="stat-label">Válaszok</span>
-        <span class="stat-data">
-          <span id="stat-answered">0</span><span class="stat-sep">/</span><span id="stat-total">0</span>
-        </span>
-      </div>
-      <div class="stat-pill">
-        <span class="stat-label">Streak</span>
-        <span class="stat-data highlight">
-          <span id="stat-streak">0</span> <i class="ph-fill ph-fire" style="color: #ff9f43;"></i>
-        </span>
-      </div>
+      <button class="icon-btn" id="theme-btn" onclick="app.toggleTheme()">
+        <i id="theme-icon" class="ph-bold ph-moon"></i>
+      </button>
+      <button class="icon-btn" onclick="app.showRules()">
+        <i class="ph-bold ph-book-open-text"></i>
+      </button>
+      <button class="icon-btn" onclick="app.toggleInfo()">
+        <i class="ph-bold ph-info"></i>
+      </button>
+      <button class="icon-btn" onclick="app.toggleResetModal()">
+        <i class="ph-bold ph-trash"></i>
+      </button>
     </div>
   </div>
+
+  <div class="dashboard-stats-container">
+    <div class="stat-pill">
+      <span class="stat-label">Válaszok</span>
+      <span class="stat-data">
+        <span id="stat-answered">0</span>
+        <span class="stat-sep">/</span>
+        <span id="stat-total">0</span>
+      </span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-label">Streak</span>
+      <span class="stat-data highlight">
+        <span id="stat-streak">0</span>
+        <i class="ph-fill ph-fire" style="color: #ff9f43;"></i>
+      </span>
+    </div>
+  </div>
+
+  <!-- FIXEN MARADÓ PÁRBAJ GOMB -->
+  <div class="dashboard-cta">
+    <button
+      class="btn-main btn-main--accent btn-main--compact"
+      onclick="app.startChallengeMode()"
+    >
+      ⚔️ Párbaj Kihívás (Béta)
+    </button>
+  </div>
+</div>
+
 
   <!-- MULTIPLAYER MODALOK -->
 
@@ -330,26 +345,22 @@
   <!-- FŐMENÜ -->
 
   <div id="s-menu" class="screen active content">
-    <div class="section-header">
-      <h2>Témakörök</h2>
-      <div class="section-total-badge" id="total-badge">0%</div>
-    </div>
-    
-    <button class="btn-main btn-main--accent btn-spacing-bottom" onclick="app.startChallengeMode()">
-      ⚔️ Párbaj Kihívás (Béta)
-    </button>
-
-    <div class="progress-track section-progress">
-      <div id="total-progress-fill" class="progress-fill"></div>
-    </div>
-    <div id="master-info" class="master-badge">
-      <span class="master-icon">🏆</span>
-      <span class="master-text">Elérted a <strong>Floorball Mester</strong> szintet!</span>
-    </div>
-    <div id="topic-container" class="topic-list">
-      <div style="text-align:center;">Betöltés...</div>
-    </div>
+  <div class="section-header">
+    <h2>Témakörök</h2>
+    <div class="section-total-badge" id="total-badge">0%</div>
   </div>
+
+  <div class="progress-track section-progress">
+    <div id="total-progress-fill" class="progress-fill"></div>
+  </div>
+
+  <div id="master-info" class="master-badge">
+    ...
+  </div>
+
+  <div id="topic-container" class="topic-list"></div>
+</div>
+
 
   <!-- SZABÁLYKÖNYV KÉPERNYŐ -->
 
