@@ -1166,87 +1166,79 @@ renderMenu() {
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
-      end(win) {
+    end(win) {
     // End screen megjelenítése
     this.showScreen("s-end");
-
-    const scoreEl = document.getElementById("end-score");
-    if (!this.session.isMulti && scoreEl) {
-      scoreEl.style.display = "block";
-    } else if (scoreEl) {
-      scoreEl.style.display = "none";
+    if (!this.session.isMulti) {
+        const scoreEl = document.getElementById("end-score");
+        if (scoreEl) scoreEl.style.display = "block";
     }
 
     const roastMessages = [
-      "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
-      "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
-      "Sebaj! A lelátóról is lehet szépen szurkolni.",
-      "A bíró vak volt? Nem, sajnos most te nézted be...",
-      "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
-      "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
+        "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
+        "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
+        "Sebaj! A lelátóról is lehet szépen szurkolni.",
+        "A bíró vak volt? Nem, sajnos most te nézted be...",
+        "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
+        "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
     ];
 
-    const randomMsg =
-      roastMessages[Math.floor(Math.random() * roastMessages.length)];
+    const randomMsg = roastMessages[Math.floor(Math.random() * roastMessages.length)];
     const isWin = !!win;
 
     const iconEl = document.getElementById("end-icon");
     const titleEl = document.getElementById("end-title");
     const msgEl = document.getElementById("end-msg");
+    const scoreEl = document.getElementById("end-score");
 
     if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
 
     if (isWin) {
-      if (titleEl) titleEl.innerText = "Kör Vége";
-      if (msgEl) {
-        msgEl.innerText = "Szép munka! Csak így tovább!";
-        msgEl.style.color = "";
-        msgEl.style.fontWeight = "400";
-      }
+        if (titleEl) titleEl.innerText = "Kör Vége";
+        if (msgEl) {
+            msgEl.innerText = "Szép munka! Csak így tovább!";
+            msgEl.style.color = "";
+            msgEl.style.fontWeight = "600";
+        }
     } else {
-      if (titleEl) titleEl.innerText = randomMsg;
-      if (msgEl) {
-        msgEl.innerText = "Game Over";
-        msgEl.style.fontWeight = "800";
-        msgEl.style.color = "var(--error)";
-      }
+        if (titleEl) titleEl.innerText = randomMsg;
+        if (msgEl) {
+            msgEl.innerText = "Game Over";
+            msgEl.style.fontWeight = "800";
+            msgEl.style.color = "var(--error)";
+        }
     }
 
-    const solvedCount = this.session.idx;
-    const totalCount = this.session.qList.length;
     if (scoreEl) {
-      scoreEl.innerText = `${solvedCount}/${totalCount}`;
+        const solvedCount = this.session.idx;
+        const totalCount = this.session.qList.length;
+        scoreEl.innerText = `${solvedCount}/${totalCount}`;
     }
 
+    // Gombok újraépítése
     const actions = document.getElementById("end-actions");
     if (actions) {
-      actions.innerHTML = "";
-      const btnMenu = document.createElement("button");
-      btnMenu.className = "btn-main btn-main--secondary";
-      btnMenu.innerText = "Vissza a főmenübe";
-      btnMenu.onclick = () => this.menu();
-      actions.appendChild(btnMenu);
-
-      // 🔽 FINOM automatikus görgetés:
-      // csak akkor, HA a gomb nincs benne a látható tartományban.
-      setTimeout(() => {
-        const content = document.querySelector(".content");
-        if (!content) return;
-
-        const contentRect = content.getBoundingClientRect();
-        const actionsRect = actions.getBoundingClientRect();
-
-        // Ha az alsó széle már látható, nem görgetünk
-        if (actionsRect.bottom <= contentRect.bottom) return;
-
-        const diff = actionsRect.bottom - contentRect.bottom + 16; // kis ráhagyás
-        content.scrollBy({
-          top: diff,
-          behavior: "smooth"
-        });
-      }, 150);
+        actions.innerHTML = "";
+        const btnMenu = document.createElement("button");
+        btnMenu.className = "btn-main btn-main--secondary";
+        btnMenu.innerText = "Vissza a főmenübe";
+        btnMenu.onclick = () => this.menu();
+        actions.appendChild(btnMenu);
     }
-  },
+
+    // KIS IDŐ KÉSLELTETÉS UTÁN GÖRGETÉS A GOMBHOZ
+    // (hogy a layout biztosan felépüljön előbb)
+    setTimeout(() => {
+        const backBtn = document.querySelector("#end-actions .btn-main");
+        if (backBtn) {
+            backBtn.scrollIntoView({
+                behavior: "smooth",
+                block: "end"   // a gomb a képernyő aljához igazodik
+            });
+        }
+    }, 150);
+}
+
 
   next() {
     this.session.idx++;
@@ -1477,6 +1469,7 @@ renderMenu() {
 };
 
 app.init();
+
 
 
 
