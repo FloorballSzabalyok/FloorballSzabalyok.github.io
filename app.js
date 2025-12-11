@@ -309,122 +309,121 @@ const app = {
 
   // --- FŐMENÜ / TÉMAKÁRTYÁK ---
 
-  renderMenu() {
+renderMenu() {
     if (!this.db || !this.topics) return;
 
-    const container = document.getElementById("topic-container");
+    const container = document.getElementById('topic-container');
     if (!container) return;
 
-    container.innerHTML = "";
+    container.innerHTML = '';
 
     let totalQuestions = 0;
     let totalAnswered = 0;
     let allCompleted = true;
 
     (this.topics || []).forEach((topicMeta, index) => {
-      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-      const topicName = `${index + 1}) ${this.getTopicName(topicId)}`;
+        const topicId = typeof topicMeta === 'string' ? topicMeta : topicMeta.id;
+        const rawName = typeof topicMeta === 'string'
+            ? topicMeta
+            : (topicMeta.name || topicMeta.id);
 
-      const topicData = this.db[topicId] || {};
+        // számozott cím: "1) Alapfogalmak"
+        const topicName = `${index + 1}) ${rawName}`;
 
-      let topicTotal = 0;
-      let topicAnswered = 0;
+        const topicData = this.db[topicId] || {};
 
-      const levelStats = {};
+        let topicTotal = 0;
+        let topicAnswered = 0;
+        const levelStats = {};
 
-      CONFIG.LEVELS.forEach((level) => {
-        const qArr = topicData[level] || [];
-        const total = qArr.length;
-        const solvedIds = (this.user.progress[topicId]?.[level] || []);
-        const answered = Math.min(solvedIds.length, total);
+        CONFIG.LEVELS.forEach((level) => {
+            const qArr = topicData[level] || [];
+            const total = qArr.length;
+            const solvedIds = (this.user.progress[topicId]?.[level] || []);
+            const answered = Math.min(solvedIds.length, total);
 
-        levelStats[level] = { total, answered };
+            levelStats[level] = { total, answered };
 
-        topicTotal += total;
-        topicAnswered += answered;
-      });
+            topicTotal += total;
+            topicAnswered += answered;
+        });
 
-      totalQuestions += topicTotal;
-      totalAnswered += topicAnswered;
+        totalQuestions += topicTotal;
+        totalAnswered += topicAnswered;
 
-      const topicPercent =
-        topicTotal > 0
-          ? Math.round((topicAnswered / topicTotal) * 100)
-          : 0;
+        const topicPercent = topicTotal > 0
+            ? Math.round((topicAnswered / topicTotal) * 100)
+            : 0;
 
-      const l1Done =
-        levelStats["L1"].total > 0 &&
-        levelStats["L1"].answered >= levelStats["L1"].total;
-      const l2Done =
-        levelStats["L2"].total > 0 &&
-        levelStats["L2"].answered >= levelStats["L2"].total;
-      const l3Done =
-        levelStats["L3"].total > 0 &&
-        levelStats["L3"].answered >= levelStats["L3"].total;
+        const l1Done = levelStats['L1'].total > 0 &&
+                       levelStats['L1'].answered >= levelStats['L1'].total;
+        const l2Done = levelStats['L2'].total > 0 &&
+                       levelStats['L2'].answered >= levelStats['L2'].total;
+        const l3Done = levelStats['L3'].total > 0 &&
+                       levelStats['L3'].answered >= levelStats['L3'].total;
 
-      const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
-      if (!mastered) allCompleted = false;
+        const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
+        if (!mastered) allCompleted = false;
 
-      const card = document.createElement("div");
-      card.className = "topic-card";
-      if (mastered) card.classList.add("mastered");
+        const card = document.createElement('div');
+        card.className = 'topic-card';
+        if (mastered) card.classList.add('mastered');
 
-      card.innerHTML = `
-        <div class="card-top">
-          <div>
+        card.innerHTML = `
+          <div class="card-top">
             <div class="t-title">${topicName}</div>
-            <div class="t-badge ${mastered ? "done" : ""}">
+            <div class="t-badge ${mastered ? 'done' : ''}">
               ${topicPercent}%
             </div>
           </div>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${topicPercent}%;"></div>
-        </div>
-        <div class="topic-level-row">
-          <img src="img/beginner_badge.png" alt="L1 szint" class="topic-level-badge ${
-            l1Done ? "active" : "inactive"
-          }">
-          <img src="img/intermediate_badge.png" alt="L2 szint" class="topic-level-badge ${
-            l2Done ? "active" : "inactive"
-          }">
-          <img src="img/expert_badge.png" alt="L3 szint" class="topic-level-badge ${
-            l3Done ? "active" : "inactive"
-          }">
-        </div>
-      `;
 
-      card.addEventListener("click", () => this.showLevels(topicId));
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${topicPercent}%;"></div>
+          </div>
 
-      container.appendChild(card);
+          <div class="topic-level-row">
+            <img src="img/beginner_badge.png" alt="L1 szint"
+                 class="topic-level-badge ${l1Done ? 'active' : 'inactive'}">
+            <img src="img/intermediate_badge.png" alt="L2 szint"
+                 class="topic-level-badge ${l2Done ? 'active' : 'inactive'}">
+            <img src="img/expert_badge.png" alt="L3 szint"
+                 class="topic-level-badge ${l3Done ? 'active' : 'inactive'}">
+          </div>
+        `;
+
+        // teljes kártya kattintható → szintválasztó
+        card.addEventListener('click', () => this.showLevels(topicId));
+
+        container.appendChild(card);
     });
 
-    // Globális stat pill a fejlécben
-    const statAnswered = document.getElementById("stat-answered");
-    const statTotal = document.getElementById("stat-total");
-    const statStreak = document.getElementById("stat-streak");
+    // globális statok a fejlécben
+    const statAnswered = document.getElementById('stat-answered');
+    const statTotal = document.getElementById('stat-total');
+    const statStreak = document.getElementById('stat-streak');
 
     if (statAnswered) statAnswered.textContent = totalAnswered;
     if (statTotal) statTotal.textContent = totalQuestions;
     if (statStreak) statStreak.textContent = this.user.streak || 0;
 
-    // Összesített progress bar + százalék
-    const totalBadge = document.getElementById("total-badge");
-    const totalProgressFill = document.getElementById("total-progress-fill");
+    // összesített progress badge
+    const totalBadge = document.getElementById('total-badge');
+    const totalProgressFill = document.getElementById('total-progress-fill');
 
     if (totalQuestions > 0) {
-      const percent = Math.round((totalAnswered / totalQuestions) * 100);
-      if (totalBadge) totalBadge.textContent = `${percent}%`;
-      if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
+        const percent = Math.round((totalAnswered / totalQuestions) * 100);
+        if (totalBadge) totalBadge.textContent = `${percent}%`;
+        if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
     }
 
-    // Master jelzés
-    const masterInfo = document.getElementById("master-info");
+    // master info jelzés
+    const masterInfo = document.getElementById('master-info');
     if (masterInfo) {
-      masterInfo.style.display =
-        allCompleted && totalQuestions > 0 ? "flex" : "none";
+        masterInfo.style.display =
+            (allCompleted && totalQuestions > 0) ? 'flex' : 'none';
     }
-  },
+}
+
 
   // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
 
@@ -1478,6 +1477,7 @@ const app = {
 };
 
 app.init();
+
 
 
 
