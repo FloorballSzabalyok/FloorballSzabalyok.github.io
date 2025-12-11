@@ -566,6 +566,27 @@ h2 {
   margin-bottom: 15px;
 }
 
+/* Életek – floorball labda ikonok */
+#g-lives {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0; /* ne legyen betűköz a SVG-k között */
+}
+
+#g-lives .life-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--error); /* piros labdák */
+  filter: drop-shadow(0 0 2px rgba(255, 68, 68, 0.4));
+}
+
+body.dark-mode #g-lives .life-icon {
+  color: #ff6b6b;
+}
+
+
 .game-subtitle {
   font-size: 0.85rem;
   font-weight: 700;
@@ -1353,3 +1374,4 @@ details p {
   font-size: 0.9rem;
   box-shadow: 0 6px 18px rgba(79, 172, 254, 0.35);
 }
+
