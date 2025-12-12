@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fb-quiz-v54'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
+const CACHE_NAME = 'fb-quiz-v55'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -109,5 +109,6 @@ self.addEventListener('activate', (event) => {
   // Azonnal aktiváljuk az új verziót minden nyitott lapon
   self.clients.claim();
 });
+
 
 
