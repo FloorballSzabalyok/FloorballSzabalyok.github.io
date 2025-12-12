@@ -320,6 +320,39 @@
     </div>
   </div>
 
+  <!-- Új párbaj kérés modál (elfogadás / elutasítás) -->
+<div id="rematch-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-inner modal-inner--rematch">
+    <h2 class="modal-title">Új párbaj?</h2>
+    <p id="rematch-text" class="modal-text">
+      Az ellenfeled új párbajt szeretne veled ugyanebben a szobában.
+    </p>
+    <div class="modal-actions">
+      <button id="rematch-accept" class="btn-main">
+        Elfogadom
+      </button>
+      <button id="rematch-reject" class="btn-main btn-main--secondary">
+        Elutasítás
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Rematch információs modál (pl. elutasította) -->
+<div id="rematch-info-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-inner modal-inner--rematch">
+    <h2 class="modal-title" id="rematch-info-title">Értesítés</h2>
+    <p id="rematch-info-text" class="modal-text"></p>
+    <div class="modal-actions">
+      <button id="rematch-info-ok" class="btn-main">
+        OK
+      </button>
+    </div>
+  </div>
+</div>
+
 
   <!-- iOS INSTALL MODAL -->
 
@@ -464,4 +497,5 @@
 <script src="app.js"></script>
 </body>
 </html>
+
 
