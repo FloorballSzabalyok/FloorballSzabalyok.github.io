@@ -2,7 +2,8 @@
 const firebaseConfig = {
   apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
   authDomain: "floorballszabalyok-hu.firebaseapp.com",
-  databaseURL: "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app",
+  databaseURL:
+    "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "floorballszabalyok-hu",
   storageBucket: "floorballszabalyok-hu.appspot.com",
   messagingSenderId: "171694131350",
@@ -15,9 +16,11 @@ const firebaseConfig = {
 function initFirebaseSafe() {
   try {
     const fb =
-      (typeof window !== "undefined" && window.firebase)
+      typeof window !== "undefined" && window.firebase
         ? window.firebase
-        : (typeof firebase !== "undefined" ? firebase : null);
+        : typeof firebase !== "undefined"
+        ? firebase
+        : null;
 
     if (fb) {
       if (!fb.apps || !fb.apps.length) {
@@ -67,7 +70,6 @@ const LIFE_SVG = `
   <circle cx="27" cy="73" r="6" fill="currentColor"/>
 </svg>`;
 
-
 // Témakörök szép megnevezése
 const TOPIC_LABELS = {
   T00_BASE: "Alapfogalmak",
@@ -90,16 +92,46 @@ function seededRandom(a) {
   };
 }
 
-const app = {
-  user: {
-  progress: {},
-  theme: "light",
-  masterShown: false,
-  streak: 0,
-  roastIndex: 0   // következő roast sorszáma
-},
+// --- UMAMI HELPER ---
+function trackEvent(eventName, data) {
+  try {
+    if (
+      typeof window !== "undefined" &&
+      window.umami &&
+      typeof window.umami.track === "function"
+    ) {
+      if (data && typeof data === "object") {
+        window.umami.track(eventName, data);
+      } else {
+        window.umami.track(eventName);
+      }
+    }
+  } catch (e) {
+    console.warn("Umami track hiba:", e);
+  }
+}
 
-  session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
+const app = {
+  // Felhasználói állapot (localStorage)
+  user: {
+    progress: {},
+    theme: "light",
+    masterShown: false,
+    streak: 0,
+    roastIndex: 0 // következő roast sorszáma
+  },
+
+  // Játék session state
+  session: {
+    topic: null,
+    level: null,
+    qList: [],
+    idx: 0,
+    lives: 3,
+    isMulti: false,
+    sessionId: null,
+    answeredCount: 0
+  },
 
   // Multi / adatbázis változók
   db: null,
@@ -178,13 +210,13 @@ const app = {
       if (raw) {
         const parsed = JSON.parse(raw);
         this.user = {
-  progress: parsed.progress || {},
-  theme: parsed.theme || "light",
-  masterShown: !!parsed.masterShown,
-  streak: parsed.streak || 0,
-  roastIndex: typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
-};
-
+          progress: parsed.progress || {},
+          theme: parsed.theme || "light",
+          masterShown: !!parsed.masterShown,
+          streak: parsed.streak || 0,
+          roastIndex:
+            typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
+        };
       }
     } catch (e) {
       console.warn("Nem sikerült beolvasni a mentett adatokat:", e);
@@ -212,7 +244,6 @@ const app = {
     }
   },
 
-  
   updateStatsUI() {
     if (!this.db) return;
 
@@ -226,7 +257,7 @@ const app = {
       CONFIG.LEVELS.forEach((level) => {
         const qArr = topicData[level] || [];
         const total = qArr.length;
-        const solvedIds = (this.user.progress[topicId]?.[level] || []);
+        const solvedIds = this.user.progress[topicId]?.[level] || [];
         const answered = Math.min(solvedIds.length, total);
 
         totalQuestions += total;
@@ -256,7 +287,7 @@ const app = {
   isLevelCompleted(topicId, level) {
     const topicData = this.db?.[topicId] || {};
     const total = (topicData[level] || []).length;
-    const solvedIds = (this.user.progress?.[topicId]?.[level] || []);
+    const solvedIds = this.user.progress?.[topicId]?.[level] || [];
     return total > 0 && solvedIds.length >= total;
   },
 
@@ -275,7 +306,9 @@ const app = {
 
     const topicsToUse =
       this.topics && this.topics.length
-        ? this.topics.map((t) => (typeof t === "string" ? t : t.id || t.code || t.key))
+        ? this.topics.map((t) =>
+            typeof t === "string" ? t : t.id || t.code || t.key
+          )
         : Object.keys(this.db);
 
     topicsToUse.forEach((topicId) => {
@@ -318,121 +351,126 @@ const app = {
 
   // --- FŐMENÜ / TÉMAKÁRTYÁK ---
 
-renderMenu() {
+  renderMenu() {
     if (!this.db || !this.topics) return;
 
-    const container = document.getElementById('topic-container');
+    const container = document.getElementById("topic-container");
     if (!container) return;
 
-    container.innerHTML = '';
+    container.innerHTML = "";
 
     let totalQuestions = 0;
     let totalAnswered = 0;
     let allCompleted = true;
 
     (this.topics || []).forEach((topicMeta, index) => {
-        const topicId = typeof topicMeta === 'string' ? topicMeta : topicMeta.id;
-        const rawName = typeof topicMeta === 'string'
-            ? topicMeta
-            : (topicMeta.name || topicMeta.id);
+      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const rawName =
+        typeof topicMeta === "string"
+          ? topicMeta
+          : topicMeta.name || topicMeta.id;
 
-        // számozott cím: "1) Alapfogalmak"
-        const topicName = `${index + 1}) ${rawName}`;
+      // számozott cím: "1) Alapfogalmak"
+      const topicName = `${index + 1}) ${rawName}`;
 
-        const topicData = this.db[topicId] || {};
+      const topicData = this.db[topicId] || {};
 
-        let topicTotal = 0;
-        let topicAnswered = 0;
-        const levelStats = {};
+      let topicTotal = 0;
+      let topicAnswered = 0;
+      const levelStats = {};
 
-        CONFIG.LEVELS.forEach((level) => {
-            const qArr = topicData[level] || [];
-            const total = qArr.length;
-            const solvedIds = (this.user.progress[topicId]?.[level] || []);
-            const answered = Math.min(solvedIds.length, total);
+      CONFIG.LEVELS.forEach((level) => {
+        const qArr = topicData[level] || [];
+        const total = qArr.length;
+        const solvedIds = this.user.progress[topicId]?.[level] || [];
+        const answered = Math.min(solvedIds.length, total);
 
-            levelStats[level] = { total, answered };
+        levelStats[level] = { total, answered };
 
-            topicTotal += total;
-            topicAnswered += answered;
-        });
+        topicTotal += total;
+        topicAnswered += answered;
+      });
 
-        totalQuestions += topicTotal;
-        totalAnswered += topicAnswered;
+      totalQuestions += topicTotal;
+      totalAnswered += topicAnswered;
 
-        const topicPercent = topicTotal > 0
-            ? Math.round((topicAnswered / topicTotal) * 100)
-            : 0;
+      const topicPercent =
+        topicTotal > 0 ? Math.round((topicAnswered / topicTotal) * 100) : 0;
 
-        const l1Done = levelStats['L1'].total > 0 &&
-                       levelStats['L1'].answered >= levelStats['L1'].total;
-        const l2Done = levelStats['L2'].total > 0 &&
-                       levelStats['L2'].answered >= levelStats['L2'].total;
-        const l3Done = levelStats['L3'].total > 0 &&
-                       levelStats['L3'].answered >= levelStats['L3'].total;
+      const l1Done =
+        levelStats["L1"].total > 0 &&
+        levelStats["L1"].answered >= levelStats["L1"].total;
+      const l2Done =
+        levelStats["L2"].total > 0 &&
+        levelStats["L2"].answered >= levelStats["L2"].total;
+      const l3Done =
+        levelStats["L3"].total > 0 &&
+        levelStats["L3"].answered >= levelStats["L3"].total;
 
-        const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
-        if (!mastered) allCompleted = false;
+      const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
+      if (!mastered) allCompleted = false;
 
-        const card = document.createElement('div');
-        card.className = 'topic-card';
-        if (mastered) card.classList.add('mastered');
+      const card = document.createElement("div");
+      card.className = "topic-card";
+      if (mastered) card.classList.add("mastered");
 
-        card.innerHTML = `
-          <div class="card-top">
-            <div class="t-title">${topicName}</div>
-            <div class="t-badge ${mastered ? 'done' : ''}">
-              ${topicPercent}%
-            </div>
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="t-title">${topicName}</div>
+          <div class="t-badge ${mastered ? "done" : ""}">
+            ${topicPercent}%
           </div>
+        </div>
 
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${topicPercent}%;"></div>
-          </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${topicPercent}%;"></div>
+        </div>
 
-          <div class="topic-level-row">
-            <img src="img/beginner_badge.png" alt="L1 szint"
-                 class="topic-level-badge ${l1Done ? 'active' : 'inactive'}">
-            <img src="img/intermediate_badge.png" alt="L2 szint"
-                 class="topic-level-badge ${l2Done ? 'active' : 'inactive'}">
-            <img src="img/expert_badge.png" alt="L3 szint"
-                 class="topic-level-badge ${l3Done ? 'active' : 'inactive'}">
-          </div>
-        `;
+        <div class="topic-level-row">
+          <img src="img/beginner_badge.png" alt="L1 szint"
+               class="topic-level-badge ${l1Done ? "active" : "inactive"}">
+          <img src="img/intermediate_badge.png" alt="L2 szint"
+               class="topic-level-badge ${l2Done ? "active" : "inactive"}">
+          <img src="img/expert_badge.png" alt="L3 szint"
+               class="topic-level-badge ${l3Done ? "active" : "inactive"}">
+        </div>
+      `;
 
-        // teljes kártya kattintható → szintválasztó
-        card.addEventListener('click', () => this.showLevels(topicId));
+      // teljes kártya kattintható → szintválasztó + analitika
+      card.addEventListener("click", () => {
+        trackEvent("open_topic", { topicId, name: rawName });
+        this.showLevels(topicId);
+      });
 
-        container.appendChild(card);
+      container.appendChild(card);
     });
 
     // globális statok a fejlécben
-    const statAnswered = document.getElementById('stat-answered');
-    const statTotal = document.getElementById('stat-total');
-    const statStreak = document.getElementById('stat-streak');
+    const statAnswered = document.getElementById("stat-answered");
+    const statTotal = document.getElementById("stat-total");
+    const statStreak = document.getElementById("stat-streak");
 
     if (statAnswered) statAnswered.textContent = totalAnswered;
     if (statTotal) statTotal.textContent = totalQuestions;
     if (statStreak) statStreak.textContent = this.user.streak || 0;
 
     // összesített progress badge
-    const totalBadge = document.getElementById('total-badge');
-    const totalProgressFill = document.getElementById('total-progress-fill');
+    const totalBadge = document.getElementById("total-badge");
+    const totalProgressFill = document.getElementById("total-progress-fill");
 
     if (totalQuestions > 0) {
-        const percent = Math.round((totalAnswered / totalQuestions) * 100);
-        if (totalBadge) totalBadge.textContent = `${percent}%`;
-        if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
+      const percent = Math.round((totalAnswered / totalQuestions) * 100);
+      if (totalBadge) totalBadge.textContent = `${percent}%`;
+      if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
     }
 
     // master info jelzés
-    const masterInfo = document.getElementById('master-info');
+    const masterInfo = document.getElementById("master-info");
     if (masterInfo) {
-        masterInfo.style.display =
-            (allCompleted && totalQuestions > 0) ? 'flex' : 'none';
+      masterInfo.style.display =
+        allCompleted && totalQuestions > 0 ? "flex" : "none";
     }
-},
-
+  },
 
   // --- SZINTVÁLASZTÓ KÉPERNYŐ ---
 
@@ -456,7 +494,7 @@ renderMenu() {
     CONFIG.LEVELS.forEach((level) => {
       const qArr = topicData[level] || [];
       const total = qArr.length;
-      const solvedIds = (this.user.progress[topicId]?.[level] || []);
+      const solvedIds = this.user.progress[topicId]?.[level] || [];
       const answered = Math.min(solvedIds.length, total);
 
       const unlocked = this.isLevelUnlocked(topicId, level);
@@ -526,7 +564,9 @@ renderMenu() {
 
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
-      alert("A multiplayerhez internet és érvényes Firebase beállítás szükséges!");
+      alert(
+        "A multiplayerhez internet és érvényes Firebase beállítás szükséges!"
+      );
       return;
     }
     if (!this.db || !Object.keys(this.questionIndex).length) {
@@ -716,10 +756,7 @@ renderMenu() {
       }
 
       // Kör vége kiértékelés
-      if (
-        data.hostAnswer !== "pending" &&
-        data.guestAnswer !== "pending"
-      ) {
+      if (data.hostAnswer !== "pending" && data.guestAnswer !== "pending") {
         this.clearWaitingTimeout();
         this.evaluateRound(data.hostAnswer, data.guestAnswer, data.round);
       }
@@ -796,91 +833,96 @@ renderMenu() {
     this.renderQ();
   },
 
-    endMultiGame(result, customMsg) {
-  this.showScreen("s-end");
-  this.stopTimer();
-  this.clearWaitingTimeout();
+  endMultiGame(result, customMsg) {
+    this.showScreen("s-end");
+    this.stopTimer();
+    this.clearWaitingTimeout();
 
-  const titleEl = document.getElementById("end-title");
-  const msgEl   = document.getElementById("end-msg");
-  const iconEl  = document.getElementById("end-icon");
-  const scoreEl = document.getElementById("end-score");
+    const titleEl = document.getElementById("end-title");
+    const msgEl = document.getElementById("end-msg");
+    const iconEl = document.getElementById("end-icon");
+    const scoreEl = document.getElementById("end-score");
 
-  // Multiplayerben nem mutatjuk a pontszám kártyát
-  if (scoreEl) scoreEl.style.display = "none";
+    // Multiplayerben nem mutatjuk a pontszám kártyát
+    if (scoreEl) scoreEl.style.display = "none";
 
-  // Csak a felső ikonban van emoji, a cím / szöveg tiszta
-  if (result === "win") {
-    if (titleEl) titleEl.innerText = "GYŐZELEM!";
-    if (msgEl) {
-      msgEl.innerText = customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
-      msgEl.style.color = "var(--success)";
+    // Csak a felső ikonban van emoji, a cím / szöveg tiszta
+    if (result === "win") {
+      if (titleEl) titleEl.innerText = "GYŐZELEM!";
+      if (msgEl) {
+        msgEl.innerText =
+          customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
+        msgEl.style.color = "var(--success)";
+      }
+      if (iconEl) iconEl.innerText = "🎉";
+    } else if (result === "lose") {
+      if (titleEl) titleEl.innerText = "VERESÉG";
+      if (msgEl) {
+        msgEl.innerText = customMsg || "Te hibáztál (vagy lassú voltál).";
+        msgEl.style.color = "var(--error)";
+      }
+      if (iconEl) iconEl.innerText = "💀";
+    } else {
+      if (titleEl) titleEl.innerText = "DÖNTETLEN";
+      if (msgEl) {
+        msgEl.innerText = customMsg || "Döntetlen játék.";
+        msgEl.style.color = "var(--text-main)";
+      }
+      if (iconEl) iconEl.innerText = "🤝";
     }
-    if (iconEl) iconEl.innerText = "🎉";
-  } else if (result === "lose") {
-    if (titleEl) titleEl.innerText = "VERESÉG";
-    if (msgEl) {
-      msgEl.innerText = customMsg || "Te hibáztál (vagy lassú voltál).";
-      msgEl.style.color = "var(--error)";
-    }
-    if (iconEl) iconEl.innerText = "💀";
-  } else {
-    if (titleEl) titleEl.innerText = "DÖNTETLEN";
-    if (msgEl) {
-      msgEl.innerText = customMsg || "Döntetlen játék.";
-      msgEl.style.color = "var(--text-main)";
-    }
-    if (iconEl) iconEl.innerText = "🤝";
-  }
 
-  // Gombok: Új párbaj + Vissza a főmenübe
-  const actions = document.getElementById("end-actions");
-  if (actions) {
-    actions.innerHTML = "";
+    // Gombok: Új párbaj + Vissza a főmenübe
+    const actions = document.getElementById("end-actions");
+    if (actions) {
+      actions.innerHTML = "";
 
-    const btnRematch = document.createElement("button");
-    btnRematch.className = "btn-main";
-    btnRematch.innerText = "Új párbaj indítása";
-    btnRematch.onclick = () => this.startChallengeMode();
-    actions.appendChild(btnRematch);
+      const btnRematch = document.createElement("button");
+      btnRematch.className = "btn-main";
+      btnRematch.innerText = "Új párbaj indítása";
+      btnRematch.onclick = () => this.startChallengeMode();
+      actions.appendChild(btnRematch);
 
-    const btnMenu = document.createElement("button");
-    btnMenu.className = "btn-main btn-main--secondary";
-    btnMenu.innerText = "Vissza a főmenübe";
-    btnMenu.onclick = () => this.menu();
-    actions.appendChild(btnMenu);
+      const btnMenu = document.createElement("button");
+      btnMenu.className = "btn-main btn-main--secondary";
+      btnMenu.innerText = "Vissza a főmenübe";
+      btnMenu.onclick = () => this.menu();
+      actions.appendChild(btnMenu);
 
-    // Finom scroll a gombokhoz
-    setTimeout(() => {
-      actions.scrollIntoView({
-        behavior: "smooth",
-        block: "end"
-      });
-    }, 150);
-  }
-
-  // Szoba lezárása / takarítás
-  if (this.roomRef) {
-    this.roomRef.off();
-    if (this.myPlayerId === "host") {
+      // Finom scroll a gombokhoz
       setTimeout(() => {
-        this.roomRef &&
-          this.roomRef
-            .remove()
-            .catch((err) =>
-              console.error("Szoba törlés hiba (endMultiGame):", err)
-            );
-      }, 5000);
+        actions.scrollIntoView({
+          behavior: "smooth",
+          block: "end"
+        });
+      }, 150);
     }
-    this.roomRef = null;
-  }
-  this.currentRoomId = null;
-  this.myPlayerId = null;
-},
 
-
+    // Szoba lezárása / takarítás
+    if (this.roomRef) {
+      this.roomRef.off();
+      if (this.myPlayerId === "host") {
+        setTimeout(() => {
+          this.roomRef &&
+            this.roomRef
+              .remove()
+              .catch((err) =>
+                console.error("Szoba törlés hiba (endMultiGame):", err)
+              );
+        }, 5000);
+      }
+      this.roomRef = null;
+    }
+    this.currentRoomId = null;
+    this.myPlayerId = null;
+  },
 
   // --- GAME ENGINE ---
+
+  generateSessionId() {
+    const ts = Date.now().toString(36);
+    const rnd = Math.random().toString(36).substring(2, 8);
+    return `${ts}-${rnd}`;
+  },
 
   /**
    * Single + Multi közös indító.
@@ -921,8 +963,8 @@ renderMenu() {
     // Keverés
     const randomFunc =
       isMulti && this.seed ? seededRandom(this.seed) : Math.random;
-    let currentIndex = qList.length,
-      randomIndex;
+    let currentIndex = qList.length;
+    let randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(randomFunc() * currentIndex);
       currentIndex--;
@@ -947,21 +989,49 @@ renderMenu() {
             level,
             qList: this.shuffle([...qList]), // sima random gyakorláshoz
             idx: 0,
-            lives: 3
+            lives: 3,
+            isMulti: false,
+            sessionId: this.generateSessionId(),
+            answeredCount: 0
           };
+
+          // Single session indulás analitika
+          trackEvent("single_start", {
+            topic,
+            level,
+            mode: "practice",
+            totalQuestions: this.session.qList.length,
+            sessionId: this.session.sessionId
+          });
+
           this.showScreen("s-game");
           this.renderQ();
         }
         return;
       }
 
-      this.session = { topic, level, qList: toPlay, idx: 0, lives: 3 };
+      this.session = {
+        topic,
+        level,
+        qList: toPlay,
+        idx: 0,
+        lives: 3,
+        isMulti: false,
+        sessionId: this.generateSessionId(),
+        answeredCount: 0
+      };
+
+      // Single session indulás analitika
+      trackEvent("single_start", {
+        topic,
+        level,
+        mode: "normal",
+        totalQuestions: this.session.qList.length,
+        sessionId: this.session.sessionId
+      });
     } else {
       // MULTI: dinamikus körszám, ne fogyjon el a kérdés
-      const totalRounds = Math.min(
-        CONFIG.MULTI_MAX_QUESTIONS,
-        qList.length
-      );
+      const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
       qList = qList.slice(0, totalRounds);
 
       this.session = {
@@ -972,8 +1042,16 @@ renderMenu() {
         lives: 3,
         isMulti: true,
         roundNumber: 1,
-        totalRounds
+        totalRounds,
+        sessionId: this.generateSessionId(),
+        answeredCount: 0
       };
+
+      // Multiplayer indulás analitika
+      trackEvent("multi_start", {
+        totalRounds: this.session.totalRounds,
+        sessionId: this.session.sessionId
+      });
     }
 
     this.hasAnsweredThisRound = false;
@@ -986,10 +1064,7 @@ renderMenu() {
     const q = this.session.qList[this.session.idx];
     if (!q) {
       if (this.session.isMulti) {
-        this.endMultiGame(
-          "draw",
-          "Elfogytak a kérdések. A párbajt lezártuk."
-        );
+        this.endMultiGame("draw", "Elfogytak a kérdések. A párbajt lezártuk.");
       } else {
         this.end(true);
       }
@@ -1017,12 +1092,12 @@ renderMenu() {
       if (qRemEl) qRemEl.style.display = "none";
 
       this.startTimer();
-        } else {
+    } else {
       if (livesEl) {
         livesEl.style.display = "block";
         this.renderLives();
       }
-  
+
       const timerBar = document.getElementById("timer-bar");
       const multiBadge = document.getElementById("multi-badge");
       const qLabel = document.getElementById("q-label");
@@ -1110,9 +1185,8 @@ renderMenu() {
     if (this.session.isMulti && !this.hasAnsweredThisRound && this.roomRef) {
       this.hasAnsweredThisRound = true;
       const update = {};
-      update[
-        this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"
-      ] = "wrong";
+      update[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] =
+        "wrong";
       this.roomRef.update(update).catch((err) =>
         console.error("Timeout update hiba:", err)
       );
@@ -1126,9 +1200,8 @@ renderMenu() {
     if (this.session.isMulti) {
       this.hasAnsweredThisRound = true;
       const update = {};
-      update[
-        this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"
-      ] = isOk ? "correct" : "wrong";
+      update[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] =
+        isOk ? "correct" : "wrong";
       if (this.roomRef) {
         this.roomRef.update(update).catch((err) =>
           console.error("Válasz update hiba:", err)
@@ -1139,6 +1212,19 @@ renderMenu() {
       btn.innerText += " ⏳";
       this.stopTimer();
     } else {
+      // Single player logika + analitika
+      this.session.answeredCount = (this.session.answeredCount || 0) + 1;
+
+      trackEvent("single_answer", {
+        topic: this.session.topic,
+        level: this.session.level,
+        correct: isOk,
+        questionId: q.id,
+        indexInSession: this.session.idx,
+        totalAnsweredInSession: this.session.answeredCount,
+        sessionId: this.session.sessionId
+      });
+
       if (isOk) {
         this.user.streak = (this.user.streak || 0) + 1;
         this.saveProgress(q.id);
@@ -1171,7 +1257,7 @@ renderMenu() {
     if (navigator.vibrate) navigator.vibrate(200);
   },
 
-    showFeedback(isOk, q) {
+  showFeedback(isOk, q) {
     const livesEl = document.getElementById("g-lives");
     if (livesEl) {
       livesEl.innerText = "❤️".repeat(Math.max(this.session.lives, 0));
@@ -1213,90 +1299,100 @@ renderMenu() {
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
-    end(win) {
-  this.showScreen("s-end");
+  end(win) {
+    this.showScreen("s-end");
 
-  const iconEl  = document.getElementById("end-icon");
-  const titleEl = document.getElementById("end-title");
-  const msgEl   = document.getElementById("end-msg");
-  const scoreEl = document.getElementById("end-score");
+    const iconEl = document.getElementById("end-icon");
+    const titleEl = document.getElementById("end-title");
+    const msgEl = document.getElementById("end-msg");
+    const scoreEl = document.getElementById("end-score");
 
-  // Single playernél pontszám látszik, multi esetben nem
-  if (!this.session.isMulti && scoreEl) {
-    scoreEl.style.display = "block";
-  } else if (scoreEl) {
-    scoreEl.style.display = "none";
-  }
-
-  // Roast message-ek – emoji NINCS bennük
-  const roastMessages = [
-    "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
-    "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
-    "Sebaj! A lelátóról is lehet szépen szurkolni.",
-    "A bíró vak volt? Nem, sajnos most te nézted be...",
-    "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
-    "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
-  ];
-
-  let roastText = roastMessages[0];
-  if (roastMessages.length > 0) {
-    const currentIndex =
-      typeof this.user.roastIndex === "number"
-        ? this.user.roastIndex % roastMessages.length
-        : 0;
-
-    roastText = roastMessages[currentIndex];
-
-    this.user.roastIndex = (currentIndex + 1) % roastMessages.length;
-    this.saveUser();
-  }
-
-  const isWin = !!win;
-
-  // Csak a felső ikonban van emoji
-  if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
-
-  if (isWin) {
-    if (titleEl) titleEl.innerText = "Kör vége";
-    if (msgEl) {
-      msgEl.innerText = "Szép munka! Csak így tovább!";
-      msgEl.style.color = "";
-      msgEl.style.fontWeight = "600";
-    }
-  } else {
-    if (titleEl) titleEl.innerText = roastText;
-    if (msgEl) {
-      msgEl.innerText = "Game Over";
-      msgEl.style.fontWeight = "800";
-      msgEl.style.color = "var(--error)";
-    }
-  }
-
-  if (scoreEl && !this.session.isMulti) {
-    const solvedCount = this.session.idx;
-    const totalCount  = this.session.qList.length;
-    scoreEl.innerText = `${solvedCount}/${totalCount}`;
-  }
-
-  const actions = document.getElementById("end-actions");
-  if (actions) {
-    actions.innerHTML = "";
-    const btnMenu = document.createElement("button");
-    btnMenu.className = "btn-main btn-main--secondary";
-    btnMenu.innerText = "Vissza a főmenübe";
-    btnMenu.onclick = () => this.menu();
-    actions.appendChild(btnMenu);
-
-    setTimeout(() => {
-      btnMenu.scrollIntoView({
-        behavior: "smooth",
-        block: "end"
+    // Single session lezárás analitika
+    if (!this.session.isMulti) {
+      trackEvent("single_end", {
+        topic: this.session.topic,
+        level: this.session.level,
+        totalAnswered: this.session.answeredCount || this.session.idx,
+        totalQuestionsInSession: this.session.qList.length,
+        success: !!win,
+        sessionId: this.session.sessionId
       });
-    }, 150);
-  }
-},
+    }
 
+    // Single playernél pontszám látszik, multi esetben nem
+    if (!this.session.isMulti && scoreEl) {
+      scoreEl.style.display = "block";
+    } else if (scoreEl) {
+      scoreEl.style.display = "none";
+    }
 
+    // Roast message-ek – emoji NINCS bennük
+    const roastMessages = [
+      "Ne búsulj, focizni még elmehetsz, vár a mennyei megyei!",
+      "A szabálykönyv nem harap, nyugodtan kinyithatod néha!",
+      "Sebaj! A lelátóról is lehet szépen szurkolni.",
+      "A bíró vak volt? Nem, sajnos most te nézted be...",
+      "Nyugi, a legjobbak is kezdték valahol. Mondjuk nem ennyire lentről.",
+      "Úgy látom szabálykönyvet még nem hozott a Jézuska..."
+    ];
+
+    let roastText = roastMessages[0];
+    if (roastMessages.length > 0) {
+      const currentIndex =
+        typeof this.user.roastIndex === "number"
+          ? this.user.roastIndex % roastMessages.length
+          : 0;
+
+      roastText = roastMessages[currentIndex];
+
+      this.user.roastIndex = (currentIndex + 1) % roastMessages.length;
+      this.saveUser();
+    }
+
+    const isWin = !!win;
+
+    // Csak a felső ikonban van emoji
+    if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
+
+    if (isWin) {
+      if (titleEl) titleEl.innerText = "Kör vége";
+      if (msgEl) {
+        msgEl.innerText = "Szép munka! Csak így tovább!";
+        msgEl.style.color = "";
+        msgEl.style.fontWeight = "600";
+      }
+    } else {
+      if (titleEl) titleEl.innerText = roastText;
+      if (msgEl) {
+        msgEl.innerText = "Game Over";
+        msgEl.style.fontWeight = "800";
+        msgEl.style.color = "var(--error)";
+      }
+    }
+
+    if (scoreEl && !this.session.isMulti) {
+      const solvedCount = this.session.idx;
+      const totalCount = this.session.qList.length;
+      scoreEl.innerText = `${solvedCount}/${totalCount}`;
+    }
+
+    const actions = document.getElementById("end-actions");
+    if (actions) {
+      actions.innerHTML = "";
+      const btnMenu = document.createElement("button");
+      btnMenu.className = "btn-main btn-main--secondary";
+      btnMenu.innerText = "Vissza a főmenübe";
+      btnMenu.onclick = () => this.menu();
+      actions.appendChild(btnMenu);
+
+      setTimeout(() => {
+        btnMenu.scrollIntoView({
+          behavior: "smooth",
+          block: "end"
+        });
+      }, 150);
+    }
+  },
 
   next() {
     this.session.idx++;
@@ -1307,7 +1403,6 @@ renderMenu() {
       this.end(true);
     }
   },
-
 
   // --- EGYÉB & PWA / MULTI SEGÉDEK ---
 
@@ -1349,11 +1444,7 @@ renderMenu() {
   rejectChallenge() {
     const modal = document.getElementById("challenge-modal");
     if (modal) modal.classList.remove("open");
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
+    window.history.replaceState({}, document.title, window.location.pathname);
     if (this.roomRef) this.roomRef.off();
     this.currentRoomId = null;
     this.myPlayerId = null;
@@ -1438,23 +1529,24 @@ renderMenu() {
     if (modal) modal.classList.toggle("open");
   },
 
- showRules() {
-  const pdfUrl = "Floorball_Jatekszabalyok_2022_FINAL.pdf";
+  showRules() {
+    const pdfUrl = "Floorball_Jatekszabalyok_2022_FINAL.pdf";
 
-  // Egyszerű desktop-detektálás: nagyobb nézet + nem érintőkijelzőre optimalizált mobil
-  const isDesktop =
-    window.innerWidth >= 900 &&
-    !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // Egyszerű desktop-detektálás: nagyobb nézet + nem érintőkijelzőre optimalizált mobil
+    const isDesktop =
+      window.innerWidth >= 900 &&
+      !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (isDesktop) {
-    // Laptop / PC: PDF megnyitása teljes fülön
-    window.open(pdfUrl, "_blank");
-  } else {
-    // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
-    this.showScreen("s-rules");
-  }
-},
+    trackEvent("open_rules", { device: isDesktop ? "desktop" : "mobile" });
 
+    if (isDesktop) {
+      // Laptop / PC: PDF megnyitása teljes fülön
+      window.open(pdfUrl, "_blank");
+    } else {
+      // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
+      this.showScreen("s-rules");
+    }
+  },
 
   showMasterScreen() {
     this.showScreen("s-master");
@@ -1471,7 +1563,7 @@ renderMenu() {
     });
   },
 
-    menu() {
+  menu() {
     this.showScreen("s-menu");
     this.renderMenu();
 
@@ -1481,7 +1573,6 @@ renderMenu() {
       content.scrollTo({ top: 0, behavior: "smooth" });
     }
   },
-
 
   showScreen(id) {
     if (document.startViewTransition) {
@@ -1503,8 +1594,8 @@ renderMenu() {
   },
 
   shuffle(array) {
-    let currentIndex = array.length,
-      randomIndex;
+    let currentIndex = array.length;
+    let randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
@@ -1528,13 +1619,3 @@ renderMenu() {
 };
 
 app.init();
-
-
-
-
-
-
-
-
-
-
