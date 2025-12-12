@@ -586,7 +586,6 @@ body.dark-mode #g-lives .life-icon {
   color: #ff6b6b;
 }
 
-
 .game-subtitle {
   font-size: 0.85rem;
   font-weight: 700;
@@ -798,6 +797,7 @@ body.dark-mode #g-lives .life-icon {
 
 /* --- MODALOK --- */
 
+/* Régi modál-réteg (welcome / info stb.) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -866,6 +866,82 @@ body.dark-mode #g-lives .life-icon {
 
 .modal-box-center {
   text-align: center;
+}
+
+/* ÚJ REMATCH MODÁLOK (Új párbaj kérés / info) */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+}
+
+.modal.open {
+  display: flex;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.modal-inner {
+  position: relative;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px 16px 12px;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  max-height: 80vh;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-inner--rematch {
+  padding-top: 18px;
+  padding-bottom: 14px;
+}
+
+.modal-inner--rematch .modal-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.modal-text {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+.modal-inner--rematch .modal-actions {
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.modal-inner--rematch .modal-actions .btn-main,
+.modal-inner--rematch .modal-actions .btn-main--secondary {
+  width: 100%;
+}
+
+/* Kis kijelzőkön is gombok látszódjanak scroll nélkül */
+@media (max-height: 640px) {
+  .modal-inner {
+    max-height: 88vh;
+    padding: 12px 12px 10px;
+  }
+  .modal-inner--rematch .modal-title {
+    font-size: 1rem;
+  }
+  .modal-text {
+    font-size: 0.9rem;
+  }
 }
 
 /* --- WELCOME DOBOZOK --- */
@@ -1084,7 +1160,7 @@ details p {
 .topic-card,
 .level-card,
 .btn-opt {
-  animation: fadeInUp 0.5s ease-out backwards;
+  animation: fadeInUp 0.5s.ease-out backwards;
 }
 
 .topic-card:nth-child(1),
@@ -1431,4 +1507,3 @@ details p {
     font-size: 0.95rem !important;
   }
 }
-
