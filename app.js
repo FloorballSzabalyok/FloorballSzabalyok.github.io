@@ -95,7 +95,7 @@ const app = {
     theme: "light",
     masterShown: false,
     streak: 0,
-    roastIndex: 0 // következő roast sorszáma
+    roastIndex: 0
   },
 
   session: {
@@ -105,9 +105,8 @@ const app = {
     idx: 0,
     lives: 3,
     isMulti: false,
-    roundNumber: 0,
-    totalRounds: 0,
-    answeredCount: 0
+    roundNumber: 1,
+    totalRounds: 0
   },
 
   // Multi / adatbázis változók
@@ -124,22 +123,18 @@ const app = {
   waitingTimeoutId: null,
   deferredPrompt: null,
 
-  // Rematch segédváltozók
-  rematchRequestInProgress: false,
-  _rematchStartedToken: null,
-
-  // --- UMAMI HELPER ---
-  track(eventName, data) {
+  // --- UMAMI SEGÉDFÜGGVÉNY ---
+  trackEvent(name, data = {}) {
     try {
-      if (
-        typeof window !== "undefined" &&
-        window.umami &&
-        typeof window.umami.track === "function"
-      ) {
-        window.umami.track(eventName, data);
+      if (typeof window !== "undefined" && window.umami) {
+        if (typeof window.umami === "function") {
+          window.umami(name, data);
+        } else if (typeof window.umami.track === "function") {
+          window.umami.track(name, data);
+        }
       }
     } catch (e) {
-      console.warn("Umami track hiba:", e);
+      console.warn("Umami tracking hiba:", e);
     }
   },
 
@@ -169,11 +164,9 @@ const app = {
       // Globális takarító listener (ha host zárja be)
       window.addEventListener("beforeunload", () => {
         if (this.myPlayerId === "host" && this.roomRef) {
-          this.roomRef
-            .remove()
-            .catch((err) =>
-              console.error("Szoba törlés hiba beforeunload:", err)
-            );
+          this.roomRef.remove().catch((err) =>
+            console.error("Szoba törlés hiba beforeunload:", err)
+          );
         }
       });
 
@@ -192,8 +185,6 @@ const app = {
           );
         }
       }
-
-      this.track("app_init");
     } catch (error) {
       console.error("Hiba:", error);
       if (container)
@@ -214,8 +205,7 @@ const app = {
           theme: parsed.theme || "light",
           masterShown: !!parsed.masterShown,
           streak: parsed.streak || 0,
-          roastIndex:
-            typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
+          roastIndex: typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
         };
       }
     } catch (e) {
@@ -251,14 +241,13 @@ const app = {
     let totalAnswered = 0;
 
     (this.topics || []).forEach((topicMeta) => {
-      const topicId =
-        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
       const topicData = this.db[topicId] || {};
 
       CONFIG.LEVELS.forEach((level) => {
         const qArr = topicData[level] || [];
         const total = qArr.length;
-        const solvedIds = this.user.progress[topicId]?.[level] || [];
+        const solvedIds = (this.user.progress[topicId]?.[level] || []);
         const answered = Math.min(solvedIds.length, total);
 
         totalQuestions += total;
@@ -288,7 +277,7 @@ const app = {
   isLevelCompleted(topicId, level) {
     const topicData = this.db?.[topicId] || {};
     const total = (topicData[level] || []).length;
-    const solvedIds = this.user.progress?.[topicId]?.[level] || [];
+    const solvedIds = (this.user.progress?.[topicId]?.[level] || []);
     return total > 0 && solvedIds.length >= total;
   },
 
@@ -307,9 +296,7 @@ const app = {
 
     const topicsToUse =
       this.topics && this.topics.length
-        ? this.topics.map((t) =>
-            typeof t === "string" ? t : t.id || t.code || t.key
-          )
+        ? this.topics.map((t) => (typeof t === "string" ? t : t.id || t.code || t.key))
         : Object.keys(this.db);
 
     topicsToUse.forEach((topicId) => {
@@ -365,12 +352,10 @@ const app = {
     let allCompleted = true;
 
     (this.topics || []).forEach((topicMeta, index) => {
-      const topicId =
-        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-      const rawName =
-        typeof topicMeta === "string"
-          ? topicMeta
-          : topicMeta.name || topicMeta.id;
+      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const rawName = typeof topicMeta === "string"
+        ? topicMeta
+        : (topicMeta.name || topicMeta.id);
 
       // számozott cím: "1) Alapfogalmak"
       const topicName = `${index + 1}) ${rawName}`;
@@ -384,7 +369,7 @@ const app = {
       CONFIG.LEVELS.forEach((level) => {
         const qArr = topicData[level] || [];
         const total = qArr.length;
-        const solvedIds = this.user.progress[topicId]?.[level] || [];
+        const solvedIds = (this.user.progress[topicId]?.[level] || []);
         const answered = Math.min(solvedIds.length, total);
 
         levelStats[level] = { total, answered };
@@ -396,19 +381,15 @@ const app = {
       totalQuestions += topicTotal;
       totalAnswered += topicAnswered;
 
-      const topicPercent =
-        topicTotal > 0
-          ? Math.round((topicAnswered / topicTotal) * 100)
-          : 0;
+      const topicPercent = topicTotal > 0
+        ? Math.round((topicAnswered / topicTotal) * 100)
+        : 0;
 
-      const l1Done =
-        levelStats["L1"].total > 0 &&
+      const l1Done = levelStats["L1"].total > 0 &&
         levelStats["L1"].answered >= levelStats["L1"].total;
-      const l2Done =
-        levelStats["L2"].total > 0 &&
+      const l2Done = levelStats["L2"].total > 0 &&
         levelStats["L2"].answered >= levelStats["L2"].total;
-      const l3Done =
-        levelStats["L3"].total > 0 &&
+      const l3Done = levelStats["L3"].total > 0 &&
         levelStats["L3"].answered >= levelStats["L3"].total;
 
       const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
@@ -465,11 +446,11 @@ const app = {
       if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
     }
 
-    // master info jelzés
+    // Master info jelzéshez lenne használható (ha van külön elem)
     const masterInfo = document.getElementById("master-info");
     if (masterInfo) {
       masterInfo.style.display =
-        allCompleted && totalQuestions > 0 ? "flex" : "none";
+        (allCompleted && totalQuestions > 0) ? "flex" : "none";
     }
   },
 
@@ -477,8 +458,6 @@ const app = {
 
   showLevels(topicId) {
     if (!this.db) return;
-
-    this.track("topic_open", { topicId });
 
     const topicData = this.db[topicId] || {};
     const lvlTitle = document.getElementById("lvl-title");
@@ -497,7 +476,7 @@ const app = {
     CONFIG.LEVELS.forEach((level) => {
       const qArr = topicData[level] || [];
       const total = qArr.length;
-      const solvedIds = this.user.progress[topicId]?.[level] || [];
+      const solvedIds = (this.user.progress[topicId]?.[level] || []);
       const answered = Math.min(solvedIds.length, total);
 
       const unlocked = this.isLevelUnlocked(topicId, level);
@@ -512,9 +491,7 @@ const app = {
           <div class="l-name">${this.getLevelLabel(level)}</div>
           <div class="l-stat">${answered} / ${total}</div>
         </div>
-        <button type="button" class="btn-play ${done ? "done" : ""}" ${
-        unlocked ? "" : "disabled"
-      }>
+        <button type="button" class="btn-play ${done ? "done" : ""}" ${unlocked ? "" : "disabled"}>
           ${unlocked ? "Indítás" : "Zárolva"}
         </button>
       `;
@@ -534,6 +511,7 @@ const app = {
       levelContainer.appendChild(card);
     });
 
+    this.trackEvent("topic_open", { topic: topicId });
     this.showScreen("s-levels");
   },
 
@@ -567,9 +545,7 @@ const app = {
 
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
-      alert(
-        "A multiplayerhez internet és érvényes Firebase beállítás szükséges!"
-      );
+      alert("A multiplayerhez internet és érvényes Firebase beállítás szükséges!");
       return;
     }
     if (!this.db || !Object.keys(this.questionIndex).length) {
@@ -596,10 +572,7 @@ const app = {
 
     // Keverés
     const shuffledIds = this.shuffle([...allQuestionIds]);
-    const totalRounds = Math.min(
-      CONFIG.MULTI_MAX_QUESTIONS,
-      shuffledIds.length
-    );
+    const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, shuffledIds.length);
     const questionsForRoom = shuffledIds.slice(0, totalRounds);
 
     // Seed (a válaszlehetőségek sorrendjéhez)
@@ -613,11 +586,8 @@ const app = {
       guestAnswer: "pending",
       questions: questionsForRoom,
       createdAt: firebase.database.ServerValue.TIMESTAMP,
-      rematch: {
-        status: "none",
-        from: null,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
-      }
+      rematchStatus: "idle",
+      rematchRequestBy: null
     };
 
     this.roomRef
@@ -630,14 +600,11 @@ const app = {
         const input = document.getElementById("share-link-input");
         if (input) input.value = link;
 
+        this.trackEvent("multi_room_created", { roomId });
+
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
         );
-
-        this.track("multi_room_created", {
-          roomId,
-          questionCount: totalRounds
-        });
       })
       .catch((err) => {
         console.error("Nem sikerült létrehozni a szobát:", err);
@@ -664,8 +631,6 @@ const app = {
         if (data && data.status === "waiting") {
           const challengeModal = document.getElementById("challenge-modal");
           if (challengeModal) challengeModal.classList.add("open");
-
-          this.track("multi_join_ready", { roomId });
         } else {
           alert("A szoba már nem elérhető.");
           this.currentRoomId = null;
@@ -704,9 +669,6 @@ const app = {
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
         );
-        this.track("multi_join_accepted", {
-          roomId: this.currentRoomId
-        });
       })
       .catch((err) => {
         console.error("acceptChallenge update hiba:", err);
@@ -739,19 +701,44 @@ const app = {
       return;
     }
 
-    // Játék indítása
+    // Rematch állapotok figyelése
+    const rmStatus = data.rematchStatus || "idle";
+    const rmBy = data.rematchRequestBy || null;
+
+    if (rmStatus === "pending") {
+      if (rmBy === this.myPlayerId) {
+        this.showRematchWaiting();
+      } else {
+        this.showRematchRequest();
+      }
+    } else {
+      this.hideRematchWaiting();
+      this.hideRematchRequest();
+    }
+
+    if (rmStatus === "rejected" && rmBy === this.myPlayerId) {
+      this.showRematchRejectedInfo();
+    }
+
+    // Játék indítása (első párbaj vagy rematch)
     if (data.status === "playing") {
       const hostModal = document.getElementById("host-modal");
       if (hostModal && hostModal.classList.contains("open")) {
         hostModal.classList.remove("open");
       }
+      const challengeModal = document.getElementById("challenge-modal");
+      if (challengeModal && challengeModal.classList.contains("open")) {
+        challengeModal.classList.remove("open");
+      }
+
       if (!this.session.isMulti) {
         this.startGameFromRoom(data);
       }
     }
 
-    // Kör állapot / várakozás kezelése
-    if (this.session.isMulti && data.round === this.session.roundNumber) {
+    // Kör állapot / várakozás kezelése – csak aktív játékban
+    if (this.session.isMulti && data.status === "playing" &&
+      data.round === this.session.roundNumber) {
       const myAns =
         this.myPlayerId === "host" ? data.hostAnswer : data.guestAnswer;
       const oppAns =
@@ -777,75 +764,19 @@ const app = {
       }
 
       // Kör vége kiértékelés
-      if (data.hostAnswer !== "pending" && data.guestAnswer !== "pending") {
+      if (
+        data.hostAnswer !== "pending" &&
+        data.guestAnswer !== "pending"
+      ) {
         this.clearWaitingTimeout();
         this.evaluateRound(data.hostAnswer, data.guestAnswer, data.round);
       }
     }
 
     // Új kör indítása
-    if (this.session.isMulti && data.round > this.session.roundNumber) {
+    if (this.session.isMulti && data.status === "playing" &&
+      data.round > this.session.roundNumber) {
       this.startNextMultiRound(data.round);
-    }
-
-    // --- Rematch állapot figyelése ---
-    if (data.rematch && data.rematch.status && data.rematch.status !== "none") {
-      const r = data.rematch;
-      const infoModal = document.getElementById("rematch-info-modal");
-      const requestModal = document.getElementById("rematch-request-modal");
-
-      if (r.status === "pending") {
-        if (r.from === this.myPlayerId) {
-          // Én kértem új párbajt → várakozó infó
-          if (infoModal) infoModal.classList.add("open");
-          if (requestModal) requestModal.classList.remove("open");
-        } else {
-          // A másik játékos kért rematch-et → döntő modál
-          if (requestModal) requestModal.classList.add("open");
-          if (infoModal) infoModal.classList.remove("open");
-        }
-      } else if (r.status === "accepted") {
-        if (infoModal) infoModal.classList.remove("open");
-        if (requestModal) requestModal.classList.remove("open");
-
-        // Csak a kérő indítsa el ténylegesen az új párbajt
-        if (r.from === this.myPlayerId && !this._rematchStartedToken) {
-          this._rematchStartedToken = Date.now();
-          this.prepareRematchGame(data);
-        }
-      } else if (r.status === "rejected") {
-        if (requestModal) requestModal.classList.remove("open");
-
-        // Kérő oldalán jelenik meg az üzenet
-        if (r.from === this.myPlayerId) {
-          if (infoModal) {
-            infoModal.classList.add("open");
-            const infoText = document.getElementById("rematch-info-text");
-            if (infoText) {
-              infoText.textContent =
-                "A másik játékos elutasította az új párbajt, menj vissza gyakorolni!";
-            }
-          } else {
-            alert(
-              "A másik játékos elutasította az új párbajt, menj vissza gyakorolni!"
-            );
-          }
-        } else if (infoModal) {
-          infoModal.classList.remove("open");
-        }
-
-        // Host takarít pár másodperc után
-        if (this.myPlayerId === "host" && this.roomRef) {
-          setTimeout(() => {
-            this.roomRef
-              .child("rematch")
-              .remove()
-              .catch((err) =>
-                console.error("Rematch törlés hiba (rejected):", err)
-              );
-          }, 4000);
-        }
-      }
     }
   },
 
@@ -867,14 +798,6 @@ const app = {
     }
 
     this.seed = roomData.seed || Date.now();
-
-    // Multi duel start event – csak egyszer, a host oldalán
-    if (this.myPlayerId === "host") {
-      this.track("multi_duel_start", {
-        roomId: this.currentRoomId,
-        totalRounds: questionIds.length
-      });
-    }
 
     this.start("MULTI", "MULTI", true, questionIds);
     this.session.roundNumber = roomData.round || 1;
@@ -927,6 +850,21 @@ const app = {
     this.stopTimer();
     this.clearWaitingTimeout();
 
+    // Multiplayer vége – státusz frissítés a rematch miatt
+    this.session.isMulti = false;
+
+    if (this.roomRef) {
+      this.roomRef
+        .update({
+          status: "finished",
+          hostAnswer: "pending",
+          guestAnswer: "pending"
+        })
+        .catch((err) =>
+          console.error("Szoba frissítés hiba (endMultiGame):", err)
+        );
+    }
+
     const titleEl = document.getElementById("end-title");
     const msgEl = document.getElementById("end-msg");
     const iconEl = document.getElementById("end-icon");
@@ -939,8 +877,7 @@ const app = {
     if (result === "win") {
       if (titleEl) titleEl.innerText = "GYŐZELEM!";
       if (msgEl) {
-        msgEl.innerText =
-          customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
+        msgEl.innerText = customMsg || "Az ellenfeled hibázott. Te vagy a bajnok!";
         msgEl.style.color = "var(--success)";
       }
       if (iconEl) iconEl.innerText = "🎉";
@@ -960,14 +897,14 @@ const app = {
       if (iconEl) iconEl.innerText = "🤝";
     }
 
-    // Gombok: Új párbaj + Vissza a főmenübe
+    // Gombok: Új párbaj kérés + Vissza a főmenübe
     const actions = document.getElementById("end-actions");
     if (actions) {
       actions.innerHTML = "";
 
       const btnRematch = document.createElement("button");
       btnRematch.className = "btn-main";
-      btnRematch.innerText = "Új párbaj indítása";
+      btnRematch.innerText = "Új párbaj kérése";
       btnRematch.onclick = () => this.requestRematch();
       actions.appendChild(btnRematch);
 
@@ -986,177 +923,126 @@ const app = {
       }, 150);
     }
 
-    // Umami – párbaj statisztika (host oldaláról elég)
     if (this.myPlayerId === "host") {
-      const roundsPlayed = this.session.roundNumber || 1;
-      const totalRounds =
-        this.session.totalRounds ||
-        (this.session.qList ? this.session.qList.length : 0);
-      this.track("multi_duel_end", {
-        roomId: this.currentRoomId,
-        result,
-        roundsPlayed,
-        totalRounds
-      });
+      this.trackEvent("multi_end", { result });
     }
-
-    // multi flag reset – hogy új "playing" állapotnál ismét elindulhasson a játék
-    this.session.isMulti = false;
   },
 
-  // Rematch indítása (host VAGY guest oldalról, link nélkül)
+  // --- REMATCH SEGÉDFÜGGVÉNYEK ---
+
   requestRematch() {
-    if (!this.currentRoomId || !this.roomRef) {
-      alert("Technikai hiba: nincs aktív párbaj szoba.");
+    if (!this.roomRef || !this.currentRoomId) {
+      // Biztonsági fallback: ha valamiért nincs szoba, indítsunk új párbajt
+      this.startChallengeMode();
       return;
     }
 
-    if (this.rematchRequestInProgress) return;
-    this.rematchRequestInProgress = true;
-
-    const payload = {
-      status: "pending",
-      from: this.myPlayerId || "host",
-      createdAt:
-        typeof firebase !== "undefined" && firebase.database
-          ? firebase.database.ServerValue.TIMESTAMP
-          : Date.now()
-    };
+    const who = this.myPlayerId || "host";
 
     this.roomRef
-      .child("rematch")
-      .set(payload)
-      .then(() => {
-        this.rematchRequestInProgress = false;
-        const infoModal = document.getElementById("rematch-info-modal");
-        if (infoModal) infoModal.classList.add("open");
-
-        const infoText = document.getElementById("rematch-info-text");
-        if (infoText) {
-          infoText.textContent =
-            "Új párbajt kértél. Várakozás az ellenfél válaszára...";
-        }
-
-        this.track("multi_rematch_request_sent", {
-          from: this.myPlayerId || "unknown"
-        });
-      })
-      .catch((err) => {
-        console.error("Rematch kérés hiba:", err);
-        this.rematchRequestInProgress = false;
-        alert("Nem sikerült elküldeni az új párbaj kérést.");
-      });
-  },
-
-  handleRematchResponse(accept) {
-    if (!this.roomRef) return;
-
-    this.roomRef
-      .child("rematch")
-      .once("value")
-      .then((snap) => {
-        const r = snap.val();
-        if (!r || r.status !== "pending") return;
-        if (r.from === this.myPlayerId) return; // saját kérést nem mi bíráljuk el
-
-        const newStatus = accept ? "accepted" : "rejected";
-        return this.roomRef.child("rematch/status").set(newStatus);
+      .update({
+        rematchRequestBy: who,
+        rematchStatus: "pending"
       })
       .then(() => {
-        this.track("multi_rematch_response", {
-          accepted: !!accept,
-          by: this.myPlayerId || "unknown"
-        });
-
-        const requestModal = document.getElementById("rematch-request-modal");
-        if (requestModal) requestModal.classList.remove("open");
+        this.showRematchWaiting();
+        this.trackEvent("multi_rematch_request", { by: who });
       })
-      .catch((err) => {
-        console.error("Rematch válasz hiba:", err);
-      });
-  },
-
-  cancelRematchRequest() {
-    if (!this.roomRef) return;
-
-    this.roomRef
-      .child("rematch")
-      .once("value")
-      .then((snap) => {
-        const r = snap.val();
-        if (!r || r.status !== "pending") return;
-        if (r.from !== this.myPlayerId) return;
-        return this.roomRef.child("rematch").remove();
-      })
-      .then(() => {
-        const infoModal = document.getElementById("rematch-info-modal");
-        if (infoModal) infoModal.classList.remove("open");
-      })
-      .catch((err) => {
-        console.error("Rematch megszakítási hiba:", err);
-      });
-  },
-
-  closeRematchModals() {
-    const m1 = document.getElementById("rematch-request-modal");
-    const m2 = document.getElementById("rematch-info-modal");
-    if (m1) m1.classList.remove("open");
-    if (m2) m2.classList.remove("open");
-  },
-
-  prepareRematchGame(roomData) {
-    if (!this.roomRef) return;
-    if (!this.db || !this.questionIndex) {
-      alert("Technikai hiba: kérdésbank nem érhető el az új párbajhoz.");
-      this._rematchStartedToken = null;
-      return;
-    }
-
-    try {
-      const allQuestionIds = Object.keys(this.questionIndex || {});
-      if (allQuestionIds.length < 2) {
-        alert("Nincs elég kérdés az új párbajhoz.");
-        this._rematchStartedToken = null;
-        return;
-      }
-
-      const shuffledIds = this.shuffle([...allQuestionIds]);
-      const totalRounds = Math.min(
-        CONFIG.MULTI_MAX_QUESTIONS,
-        shuffledIds.length
+      .catch((err) =>
+        console.error("Rematch kérés update hiba:", err)
       );
-      const questionsForRoom = shuffledIds.slice(0, totalRounds);
-      const seed = Math.floor(Math.random() * 1e9);
+  },
 
-      const rematchBase = roomData && roomData.rematch ? roomData.rematch : {};
+  acceptRematch() {
+    if (!this.roomRef || !this.db || !Object.keys(this.questionIndex).length) {
+      alert("Technikai hiba miatt új szobát kell létrehozni.");
+      this.startChallengeMode();
+      return;
+    }
 
+    const allQuestionIds = Object.keys(this.questionIndex);
+    const shuffledIds = this.shuffle([...allQuestionIds]);
+    const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, shuffledIds.length);
+    const questionsForRoom = shuffledIds.slice(0, totalRounds);
+    const newSeed = Math.floor(Math.random() * 1e9);
+
+    this.roomRef
+      .update({
+        status: "playing",
+        round: 1,
+        hostAnswer: "pending",
+        guestAnswer: "pending",
+        questions: questionsForRoom,
+        seed: newSeed,
+        rematchStatus: "accepted",
+        rematchRequestBy: null
+      })
+      .then(() => {
+        this.hideRematchRequest();
+        this.trackEvent("multi_rematch_accept", { by: this.myPlayerId });
+      })
+      .catch((err) =>
+        console.error("Rematch elfogadás update hiba:", err)
+      );
+  },
+
+  rejectRematch() {
+    if (!this.roomRef) {
+      this.hideRematchRequest();
+      return;
+    }
+
+    this.roomRef
+      .update({
+        rematchStatus: "rejected"
+      })
+      .then(() => {
+        this.hideRematchRequest();
+        this.trackEvent("multi_rematch_reject", { by: this.myPlayerId });
+      })
+      .catch((err) =>
+        console.error("Rematch elutasítás update hiba:", err)
+      );
+  },
+
+  showRematchRequest() {
+    const modal = document.getElementById("rematch-request-modal");
+    if (modal) modal.classList.add("open");
+  },
+
+  hideRematchRequest() {
+    const modal = document.getElementById("rematch-request-modal");
+    if (modal) modal.classList.remove("open");
+  },
+
+  showRematchWaiting() {
+    const modal = document.getElementById("rematch-waiting-modal");
+    if (modal) modal.classList.add("open");
+  },
+
+  hideRematchWaiting() {
+    const modal = document.getElementById("rematch-waiting-modal");
+    if (modal) modal.classList.remove("open");
+  },
+
+  showRematchRejectedInfo() {
+    const modal = document.getElementById("rematch-info-modal");
+    if (modal) modal.classList.add("open");
+  },
+
+  closeRematchInfo() {
+    const modal = document.getElementById("rematch-info-modal");
+    if (modal) modal.classList.remove("open");
+
+    if (this.roomRef) {
       this.roomRef
         .update({
-          status: "playing",
-          seed: seed,
-          round: 1,
-          hostAnswer: "pending",
-          guestAnswer: "pending",
-          questions: questionsForRoom,
-          rematch: {
-            status: "none",
-            from: rematchBase.from || this.myPlayerId || "host",
-            createdAt:
-              typeof firebase !== "undefined" && firebase.database
-                ? firebase.database.ServerValue.TIMESTAMP
-                : Date.now()
-          }
+          rematchStatus: "idle",
+          rematchRequestBy: null
         })
-        .then(() => {
-          this._rematchStartedToken = null;
-        })
-        .catch((err) => {
-          console.error("Új párbaj indítás hiba (rematch):", err);
-          this._rematchStartedToken = null;
-        });
-    } catch (e) {
-      console.error("Rematch előkészítés hiba:", e);
-      this._rematchStartedToken = null;
+        .catch((err) =>
+          console.error("Rematch státusz reset hiba:", err)
+        );
     }
   },
 
@@ -1222,34 +1108,45 @@ const app = {
             "Már megoldottad az összes kérdést ezen a szinten.\nIndítsd újra gyakorlás módban?"
           )
         ) {
-          const practiceList = this.shuffle([...qList]);
           this.session = {
             topic,
             level,
-            qList: practiceList,
+            qList: this.shuffle([...qList]), // sima random gyakorláshoz
             idx: 0,
             lives: 3,
             isMulti: false,
-            roundNumber: 0,
-            totalRounds: practiceList.length,
-            answeredCount: 0
+            roundNumber: 1,
+            totalRounds: qList.length
           };
-        } else {
-          return;
+          this.showScreen("s-game");
+          this.renderQ();
+          this.trackEvent("single_start", {
+            topic,
+            level,
+            totalQuestions: qList.length,
+            mode: "practice"
+          });
         }
-      } else {
-        this.session = {
-          topic,
-          level,
-          qList: toPlay,
-          idx: 0,
-          lives: 3,
-          isMulti: false,
-          roundNumber: 0,
-          totalRounds: toPlay.length,
-          answeredCount: 0
-        };
+        return;
       }
+
+      this.session = {
+        topic,
+        level,
+        qList: toPlay,
+        idx: 0,
+        lives: 3,
+        isMulti: false,
+        roundNumber: 1,
+        totalRounds: toPlay.length
+      };
+
+      this.trackEvent("single_start", {
+        topic,
+        level,
+        totalQuestions: toPlay.length,
+        mode: "first_pass"
+      });
     } else {
       // MULTI: dinamikus körszám, ne fogyjon el a kérdés
       const totalRounds = Math.min(
@@ -1266,26 +1163,21 @@ const app = {
         lives: 3,
         isMulti: true,
         roundNumber: 1,
-        totalRounds,
-        answeredCount: 0
+        totalRounds
       };
+
+      if (this.myPlayerId === "host") {
+        this.trackEvent("multi_start", {
+          totalRounds,
+          roomId: this.currentRoomId
+        });
+      }
     }
 
     this.hasAnsweredThisRound = false;
     this.lastEvaluatedRound = 0;
-    this.session.answeredCount = 0;
-
     this.showScreen("s-game");
     this.renderQ();
-
-    // Single session start tracking
-    if (!isMulti) {
-      this.track("single_session_start", {
-        topic: this.session.topic,
-        level: this.session.level,
-        questionCount: this.session.qList.length
-      });
-    }
   },
 
   renderQ() {
@@ -1345,18 +1237,12 @@ const app = {
       }
     }
 
-    const qTextEl = document.getElementById("q-text");
-    if (qTextEl) qTextEl.textContent = q.q;
-
+    document.getElementById("q-text").textContent = q.q;
     const cont = document.getElementById("g-opts");
-    if (!cont) return;
     cont.style.display = "block";
     cont.innerHTML = "";
     const feed = document.getElementById("g-feed");
-    if (feed) {
-      feed.style.display = "none";
-      feed.innerHTML = "";
-    }
+    feed.style.display = "none";
 
     const progEl = document.getElementById("g-prog");
     if (progEl && this.session.qList.length) {
@@ -1428,17 +1314,16 @@ const app = {
       this.roomRef.update(update).catch((err) =>
         console.error("Timeout update hiba:", err)
       );
+      if (this.myPlayerId === "host") {
+        this.trackEvent("multi_timeout", {
+          round: this.session.roundNumber
+        });
+      }
     }
   },
 
   check(i, btn) {
     const q = this.session.qList[this.session.idx];
-    if (!q) return;
-
-    // Session szintű kérdésszámláló
-    this.session.answeredCount =
-      (this.session.answeredCount || 0) + 1;
-
     const isOk = i === q.c;
 
     if (this.session.isMulti) {
@@ -1456,6 +1341,13 @@ const app = {
       btn.style.opacity = "0.7";
       btn.innerText += " ⏳";
       this.stopTimer();
+
+      if (this.myPlayerId === "host") {
+        this.trackEvent("multi_answer", {
+          round: this.session.roundNumber,
+          correct: isOk
+        });
+      }
     } else {
       if (isOk) {
         this.user.streak = (this.user.streak || 0) + 1;
@@ -1466,6 +1358,11 @@ const app = {
         this.shakeLives();
       }
       this.saveUser();
+      this.trackEvent("single_answer", {
+        topic: this.session.topic,
+        level: this.session.level,
+        correct: isOk
+      });
       this.showFeedback(isOk, q);
     }
   },
@@ -1490,14 +1387,12 @@ const app = {
   },
 
   showFeedback(isOk, q) {
-    // SVG-s élet ikonok frissítése, nincs külön ❤️ emoji
+    // Újrarajzoljuk az életeket (ikonos verzió)
     this.renderLives();
 
-    const opts = document.getElementById("g-opts");
-    if (opts) opts.style.display = "none";
+    document.getElementById("g-opts").style.display = "none";
 
     const feed = document.getElementById("g-feed");
-    if (!feed) return;
     feed.style.display = "block";
     feed.className = isOk ? "feedback ok" : "feedback bad";
 
@@ -1528,7 +1423,6 @@ const app = {
       ${btnHtml}
     `;
 
-    // Maradhat: felhozza a feedback-blokkot
     feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
   },
 
@@ -1539,8 +1433,6 @@ const app = {
     const titleEl = document.getElementById("end-title");
     const msgEl = document.getElementById("end-msg");
     const scoreEl = document.getElementById("end-score");
-
-    const isWin = !!win;
 
     // Single playernél pontszám látszik, multi esetben nem
     if (!this.session.isMulti && scoreEl) {
@@ -1572,6 +1464,8 @@ const app = {
       this.saveUser();
     }
 
+    const isWin = !!win;
+
     // Csak a felső ikonban van emoji
     if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
 
@@ -1592,18 +1486,16 @@ const app = {
     }
 
     if (scoreEl && !this.session.isMulti) {
-      const solvedCount =
-        this.session.answeredCount || this.session.idx;
+      const solvedCount = this.session.idx;
       const totalCount = this.session.qList.length;
       scoreEl.innerText = `${solvedCount}/${totalCount}`;
 
-      // Umami – single session vége + kérdésszám
-      this.track("single_session_end", {
+      this.trackEvent("single_end", {
         topic: this.session.topic,
         level: this.session.level,
-        answered: solvedCount,
-        total: totalCount,
-        result: isWin ? "completed" : "game_over"
+        win: !!win,
+        solved: solvedCount,
+        total: totalCount
       });
     }
 
@@ -1767,20 +1659,18 @@ const app = {
   showRules() {
     const pdfUrl = "Floorball_Jatekszabalyok_2022_FINAL.pdf";
 
-    // Egyszerű desktop-detektálás: nagyobb nézet + nem érintőkijelzőre optimalizált mobil
+    // Egyszerű desktop-detektálás
     const isDesktop =
       window.innerWidth >= 900 &&
       !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    this.track("rules_open", {
-      mode: isDesktop ? "new_tab" : "in_app"
-    });
+    this.trackEvent("rules_open");
 
     if (isDesktop) {
       // Laptop / PC: PDF megnyitása teljes fülön
       window.open(pdfUrl, "_blank");
     } else {
-      // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
+      // Mobil / tablet: beépített mobil nézet
       this.showScreen("s-rules");
     }
   },
@@ -1804,16 +1694,11 @@ const app = {
     this.showScreen("s-menu");
     this.renderMenu();
 
-    // Multi flag reset, hogy új párbaj esetén ne akadjon el
-    this.session.isMulti = false;
-
     // Mindig a főmenü tetejére ugrunk a content-ben
     const content = document.querySelector(".content");
     if (content && content.scrollTo) {
       content.scrollTo({ top: 0, behavior: "smooth" });
     }
-
-    this.track("menu_view");
   },
 
   showScreen(id) {
