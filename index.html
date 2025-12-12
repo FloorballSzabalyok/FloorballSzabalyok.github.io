@@ -1,533 +1,464 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>FloorballSzabályok</title>
 
-  <!-- PWA / ikonok (ha már megvannak) -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="img/icon-512.png">
-  <meta name="theme-color" content="#FF5E62">
+  <!-- App ikonok -->
+  <link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="img/icon-512.png" />
 
-  <!-- Poppins betűtípus -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- Poppins betűcsalád -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
 
-  <!-- Phosphor ikonok (header ikon gombokhoz) -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <!-- Phosphor ikonok -->
+  <script defer src="https://unpkg.com/phosphor-icons"></script>
 
-  <!-- Fő stíluslap – EZT A FÁJLT HOZD LÉTRE: styles.css -->
-  <link rel="stylesheet" href="styles.css">
+  <!-- Umami analitika – IDE TEDD VISSZA A SAJÁT ID-DET -->
+  <!--
+  <script async src="https://eu.umami.is/script.js"
+          data-website-id="IDE_JÖN_A_SAJÁT_UMAMI_WEBSITE_ID"></script>
+  -->
 
-  <!-- Umami analitika – IDE ÍRD BE A SAJÁT ID-DAT -->
-  <!-- <script async src="https://cloud.umami.is/script.js" data-website-id="c1fb486e-d928-445e-986d-fa44cc181fae"></script> -->
+  <!-- Firebase (v8) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- html2canvas a tanúsítványhoz -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+  <!-- Stílusok -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Kérdésbank és app logika -->
+  <script src="database.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
 <body>
-<div class="app-container">
-
-  <!-- FEJLÉC / DASHBOARD -->
-  <header class="dashboard-header">
-    <div class="dashboard-nav">
-      <!-- Home gomb – mindig visszavisz a főmenüre -->
-      <button class="icon-btn" type="button" aria-label="Főmenü" onclick="app.menu()">
-        <i class="ph ph-house"></i>
-      </button>
-
-      <!-- cím (kattintható: vissza főmenüre) -->
-      <div class="app-title" onclick="app.menu()">
-        Floorball Mester v11.0
-      </div>
-
-      <div class="header-actions">
-        <!-- Infó + GYIK -->
-        <button class="icon-btn" type="button" aria-label="Infó és GYIK" onclick="app.toggleInfo()">
-          <i class="ph ph-info"></i>
+  <div class="app-container">
+    <!-- FEJLÉC / DASHBOARD -->
+    <header class="dashboard-header">
+      <div class="dashboard-nav">
+        <button class="icon-btn" type="button" onclick="app.menu()" aria-label="Főmenü">
+          <i class="ph-house"></i>
         </button>
 
-        <!-- Szabálykönyv -->
-        <button class="icon-btn" type="button" aria-label="Szabálykönyv" onclick="app.showRules()">
-          <i class="ph ph-book-open-text"></i>
-        </button>
-
-        <!-- Teljes reset -->
-        <button class="icon-btn" type="button" aria-label="Eredmények törlése"
-                onclick="app.toggleResetModal()">
-          <i class="ph ph-trash"></i>
-        </button>
-
-        <!-- Téma váltó -->
-        <button class="icon-btn" type="button" aria-label="Világos / sötét mód" onclick="app.toggleTheme()">
-          <i id="theme-icon" class="ph ph-moon"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Összesített statisztikák -->
-    <div class="dashboard-stats-container">
-      <div class="stat-pill">
-        <div class="stat-label">Megoldott kérdések</div>
-        <div class="stat-data">
-          <span id="stat-answered">0</span>
-          <span class="stat-sep">/</span>
-          <span id="stat-total">0</span>
+        <div class="app-title" onclick="app.menu()">
+          FloorballSzabályok
         </div>
-      </div>
-      <div class="stat-pill">
-        <div class="stat-label">Zsinórban helyes</div>
-        <div class="stat-data">
-          <span id="stat-streak">0</span>
-        </div>
-      </div>
-    </div>
-  </header>
 
-  <!-- FŐ TARTALOM -->
-  <main class="content">
-
-    <!-- FŐMENÜ / TÉMA LISTA -->
-    <section id="s-menu" class="screen screen-menu active">
-      <div class="section-header">
-        <h2>Témakörök</h2>
-        <div class="section-total-badge">
-          <span id="total-badge">0%</span>
+        <div class="header-actions">
+          <button class="icon-btn" type="button" onclick="app.toggleTheme()" aria-label="Téma váltása">
+            <i id="theme-icon" class="ph-moon"></i>
+          </button>
+          <button class="icon-btn" type="button" onclick="app.showRules()" aria-label="Szabálykönyv">
+            <i class="ph-book-open"></i>
+          </button>
+          <button class="icon-btn" type="button" onclick="app.toggleInfo()" aria-label="Infó & GYIK">
+            <i class="ph-info"></i>
+          </button>
+          <button class="icon-btn" type="button" onclick="app.toggleResetModal()" aria-label="Adatok törlése">
+            <i class="ph-trash"></i>
+          </button>
         </div>
       </div>
 
-      <div class="section-progress">
-        <div class="progress-track">
-          <div class="progress-fill" id="total-progress-fill"></div>
-        </div>
-      </div>
-
-      <!-- PÁRBAJ CTA – TÉMAKÁRTYÁK FELETT -->
-      <div class="dashboard-cta">
-        <button class="btn-main btn-main--accent btn-main--compact"
-                type="button"
-                onclick="app.startChallengeMode()">
-          🎮 Floorball párbaj indítása
-        </button>
-      </div>
-
-      <!-- TÉMAKÁRTYÁK -->
-      <div class="topic-list" id="topic-container"></div>
-    </section>
-
-    <!-- SZINTVÁLASZTÓ -->
-    <section id="s-levels" class="screen">
-      <h2>Szint választás</h2>
-      <div id="lvl-title" class="level-title">Témakör címe</div>
-      <p class="level-subtitle">
-        Válaszd ki, mennyire akarod szívni magad: Kezdő (L1), Haladó (L2) vagy Profi (L3).
-      </p>
-      <div id="level-container"></div>
-    </section>
-
-    <!-- GAME SCREEN -->
-    <section id="s-game" class="screen">
-      <div class="game-header">
-        <div id="multi-badge"
-             style="display:none; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; font-weight:800; color:var(--secondary); margin-bottom:6px;">
-          Párbaj mód
-        </div>
-
-        <div id="round-indicator"
-             class="game-subtitle"
-             style="display:none; margin-bottom:6px;">
-          Kör: 1 / 10
-        </div>
-
-        <div id="g-lives"></div>
-
-        <div class="game-subtitle">
-          <span id="q-label">Hátralévő kérdések:</span>
-          <span class="game-subtitle-number" id="q-remaining">0</span>
-        </div>
-
-        <div class="game-progress">
-          <div class="progress-track">
-            <div class="progress-fill" id="g-prog"></div>
+      <!-- Statisztikák -->
+      <div class="dashboard-stats-container">
+        <div class="stat-pill">
+          <div class="stat-label">Válaszok</div>
+          <div class="stat-data">
+            <span id="stat-answered">0</span>
+            <span class="stat-sep">/</span>
+            <span id="stat-total">0</span>
           </div>
         </div>
 
-        <!-- Időzítő csak párbaj módban látszik -->
-        <div class="timer-track" id="timer-bar" style="display:none;">
-          <div class="timer-fill" id="timer-fill"></div>
+        <div class="stat-pill">
+          <div class="stat-label">Streak</div>
+          <div class="stat-data">
+            <span id="stat-streak">0</span>
+            <span>🔥</span>
+          </div>
         </div>
       </div>
 
-      <div class="q-box">
-        <div id="q-text">Kérdés szövege…</div>
+      <!-- Párbaj kihívás CTA – MINDIG A FEJLÉC ALATT -->
+      <div class="dashboard-cta">
+        <button
+          type="button"
+          class="btn-main btn-main--accent btn-main--compact"
+          onclick="app.startChallengeMode()">
+          ⚔️ Párbaj kihívás (béta)
+        </button>
       </div>
+    </header>
 
-      <div id="g-opts"></div>
-      <div id="g-feed" class="feedback"></div>
-
-      <div class="bottom-spacer"></div>
-    </section>
-
-    <!-- END SCREEN -->
-    <section id="s-end" class="screen screen-end">
-      <div class="end-icon" id="end-icon">🎉</div>
-      <h1 class="end-title" id="end-title">Kör vége</h1>
-      <p class="end-msg" id="end-msg">Szép munka! Csak így tovább!</p>
-
-      <div class="end-card">
-        <div class="end-card-label">Eredményed</div>
-        <div class="end-score" id="end-score">0/0</div>
-      </div>
-
-      <div class="end-actions" id="end-actions">
-        <!-- gombok JS-ből -->
-      </div>
-    </section>
-
-    <!-- MESTER CERTIFIKÁTUM -->
-    <section id="s-master" class="screen screen-master">
-      <div id="certificate" class="certificate-box">
-        <div class="certificate-icon">🏆</div>
-        <div class="certificate-title">Floorball Mester</div>
-        <p class="certificate-text">
-          Gratulálok! Végigtoltad az összes témakört és szintet.  
-          Ha ezt kinyomtatod és kirakod a falra, a bíró is megijed tőled.
-        </p>
-        <div class="certificate-badge">
-          Hivatalosan is szabályguru lettél
+    <!-- FŐ TARTALOM -->
+    <main class="content">
+      <!-- FŐMENÜ – TÉMA LISTA -->
+      <section class="screen active" id="s-menu">
+        <div class="section-header">
+          <h2>Témakörök</h2>
+          <span class="section-total-badge" id="total-badge">0%</span>
         </div>
-      </div>
 
-      <button class="btn-main btn-main--accent"
-              type="button"
-              onclick="app.downloadCert()">
-        🎓 Tanúsítvány letöltése képként
-      </button>
-    </section>
+        <div class="section-progress">
+          <div class="progress-track">
+            <div class="progress-fill" id="total-progress-fill"></div>
+          </div>
+        </div>
 
-    <!-- SZABÁLYKÖNYV NÉZET (MOBIL) -->
-    <section id="s-rules" class="screen screen-rules">
-      <div class="rules-header">
-        <h2>Hivatalos szabálykönyv</h2>
-      </div>
+        <!-- Floorball Mester badge -->
+        <div class="master-badge" id="master-info">
+          <div class="master-icon">🏆</div>
+          <div class="master-text">
+            <strong>Floorball Mester!</strong> Minden témakört végigjátszottál ezen az eszközön.
+          </div>
+        </div>
 
-      <div class="pdf-mobile-view">
-        <div class="pdf-deco-icon">📘</div>
-        <div class="pdf-title-mobile">Floorball – Játékszabályok 2022</div>
-        <p style="margin-bottom: 20px; font-size:0.9rem;">
-          A PDF a legtöbb telefonon külön nézetben nyílik meg (beépített olvasóval).
-          Használd bátran a keresőt (🔍), ha konkrét szabályt keresel.
+        <!-- Témakártyák -->
+        <div class="topic-list" id="topic-container"></div>
+      </section>
+
+      <!-- SZINT VÁLASZTÓ -->
+      <section class="screen" id="s-levels">
+        <div class="section-header">
+          <h2>Válassz szintet</h2>
+        </div>
+        <div class="level-title" id="lvl-title">Témakör</div>
+        <p class="level-subtitle">
+          L1 = Kezdő, L2 = Haladó, L3 = Profi. A magasabb szintek az előző szint teljesítése után nyílnak meg.
         </p>
-        <a href="Floorball_Jatekszabalyok_2022_FINAL.pdf"
-           class="btn-pdf"
-           target="_blank" rel="noopener">
-          PDF megnyitása
-          <span>↗</span>
-        </a>
+
+        <div id="level-container"></div>
+      </section>
+
+      <!-- JÁTÉK KÉPERNYŐ -->
+      <section class="screen" id="s-game">
+        <div class="game-header">
+          <!-- Életek -->
+          <div id="g-lives" class="lives"></div>
+
+          <!-- Kör / kérdés infók -->
+          <div class="game-subtitle">
+            <span id="q-label">
+              Hátralévő kérdés:
+              <span class="game-subtitle-number" id="q-remaining">0</span>
+            </span>
+
+            <span id="round-indicator" style="display:none; margin-left:8px;"></span>
+
+            <span id="multi-badge"
+                  style="display:none; margin-left:8px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
+              Párbaj mód
+            </span>
+          </div>
+
+          <!-- Időzítő csak párbaj módban -->
+          <div class="timer-track" id="timer-bar" style="display:none;">
+            <div class="timer-fill" id="timer-fill"></div>
+          </div>
+
+          <!-- Haladás a szinten belül -->
+          <div class="game-progress">
+            <div class="progress-track">
+              <div class="progress-fill" id="g-prog"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kérdés -->
+        <div class="q-box">
+          <div id="q-text"></div>
+        </div>
+
+        <!-- Válasz opciók -->
+        <div id="g-opts"></div>
+
+        <!-- Feedback -->
+        <div id="g-feed" class="feedback"></div>
+
+        <div class="bottom-spacer"></div>
+      </section>
+
+      <!-- END / GAME OVER KÉPERNYŐ -->
+      <section class="screen screen-end" id="s-end">
+        <div class="end-icon" id="end-icon">🎉</div>
+        <h1 class="end-title" id="end-title">Kör vége</h1>
+        <p class="end-msg" id="end-msg">Szép munka! Csak így tovább!</p>
+
+        <div class="end-card">
+          <div class="end-card-label">Eredményed</div>
+          <div class="end-score" id="end-score">0/0</div>
+        </div>
+
+        <div class="end-actions" id="end-actions"></div>
+      </section>
+
+      <!-- SZABÁLYKÖNYV (PDF) -->
+      <section class="screen screen-rules" id="s-rules">
+        <div class="rules-header">
+          <h2>Hivatalos szabálykönyv</h2>
+        </div>
+
+        <!-- Asztali nézet: beágyazott PDF -->
+        <iframe
+          class="pdf-desktop-view"
+          src="Floorball_Jatekszabalyok_2022_FINAL.pdf"
+          title="Floorball játékszabályok PDF"></iframe>
+
+        <!-- Mobil nézet: gomb új fülön nyíló PDF-hez -->
+        <div class="pdf-mobile-view">
+          <div class="pdf-deco-icon">📘</div>
+          <div class="pdf-title-mobile">Floorball játékszabályok (PDF)</div>
+          <p>
+            Mobilon a szabálykönyvet egy külön PDF nézetben tudod kényelmesen olvasni.
+            Használd a keresőt és a nagyítást!
+          </p>
+          <a
+            href="Floorball_Jatekszabalyok_2022_FINAL.pdf"
+            target="_blank"
+            rel="noopener"
+            class="btn-pdf">
+            Megnyitás PDF-ben
+          </a>
+        </div>
+      </section>
+
+      <!-- FLOORBALL MESTER KÉPERNYŐ -->
+      <section class="screen screen-master" id="s-master">
+        <div id="certificate" class="certificate-box">
+          <div class="certificate-icon">🏆</div>
+          <h2 class="certificate-title">Floorball Mester</h2>
+          <p class="certificate-text">
+            Gratulálunk! Végigküzdötted magad az összes témakörön ezen az eszközön.
+            Ezt a „diplomát” elmentheted és megoszthatod a csapattársaiddal.
+          </p>
+          <div class="certificate-badge">Hivatalos nem, menő igen 🤝</div>
+        </div>
+
+        <button class="btn-main" type="button" onclick="app.downloadCert()">
+          Tanúsítvány letöltése
+        </button>
+        <button class="btn-main btn-main--secondary" type="button" onclick="app.menu()">
+          Vissza a főmenübe
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <!-- PWA TELEPÍTÉS GOMB -->
+  <button
+    id="install-btn"
+    type="button"
+    class="btn-main btn-main--accent btn-main--compact"
+    style="position: fixed; right: 16px; bottom: 16px; z-index: 1500; display: none;"
+    onclick="app.triggerInstall()">
+    + App hozzáadása
+  </button>
+
+  <!-- WELCOME MODAL – HUMOROS INDÍTÓ POPUP -->
+  <div class="modal-overlay open" id="welcome-modal">
+    <div class="modal-box modal-box-center">
+      <span class="welcome-emoji">🏒</span>
+      <h2 class="welcome-title">Üdv a FloorballSzabályok appban!</h2>
+      <p class="welcome-text">
+        Itt játékos kvízkérdéseken keresztül tanulhatod meg a hivatalos floorball
+        szabályokat magyarul, gyorsan és fájdalommentesen. (Oké, a Game Over néha fáj egy kicsit.)
+      </p>
+
+      <div class="welcome-box welcome-box-highlight">
+        <p class="welcome-text">
+          <strong>Hogyan működik?</strong><br />
+          Válassz témakört, utána szintet (L1–L3),
+          és próbálj meg minél több kérdésre helyesen válaszolni, mielőtt elfogynak az életeid.
+        </p>
       </div>
 
-      <!-- Biztonság kedvéért beágyazott nézet is (tablet / nagy mobil) -->
-      <iframe class="pdf-desktop-view"
-              src="Floorball_Jatekszabalyok_2022_FINAL.pdf"></iframe>
-    </section>
+      <div class="welcome-box">
+        <p class="welcome-text">
+          <strong>Tipp:</strong> ha valamiben bizonytalan vagy, nézd meg a hivatalos szabálykönyv PDF-et
+          a könyv ikonra kattintva. A kérdések alatt mindig jelöljük, hogy melyik paragrafushoz tartoznak.
+        </p>
+      </div>
 
-  </main>
-</div>
-
-<!-- WELCOME MODAL – HUMOROS KEZDŐ POPUP -->
-<div class="modal-overlay" id="welcome-modal">
-  <div class="modal-box modal-box-center">
-    <span class="welcome-emoji">🥅</span>
-    <h1 class="welcome-title">Üdv a Floorball Mesterben!</h1>
-    <p class="welcome-text">
-      Ez egy rajongói készítésű, ingyenes gyakorló app a
-      <strong>hivatalos floorball szabályok</strong> elsajátításához.
-      Rövid kérdések, vicces visszajelzések, nulla magolás.
-    </p>
-
-    <div class="welcome-box welcome-box-highlight">
-      <p class="welcome-text">
-        💡 Tipp: kezdd az L1 szintekkel, aztán lépj tovább L2 és L3-ra.
-        A kérdések KLP-alapúak, így idővel az egész szabálykönyv összeáll a fejedben.
-      </p>
-    </div>
-
-    <div class="welcome-box">
-      <p class="welcome-text">
-        ⚠️ Fontos: ez nem hivatalos IFF alkalmazás.
-        A mérvadó mindig a <strong>hivatalos PDF szabálykönyv</strong>.
-      </p>
-    </div>
-
-    <div class="modal-actions">
       <button class="btn-main btn-main--accent" type="button" onclick="app.toggleWelcome()">
-        Értem, kezdjük!
+        Kezdjük!
       </button>
     </div>
   </div>
-</div>
 
-<!-- INFO + GYIK MODAL -->
-<div class="modal-overlay" id="info-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h2 class="modal-title">Infó &amp; GYIK</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.toggleInfo()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-
-    <p class="info-strong-lead">
-      Ez az app a magyar floorball közösségnek készült:
-      <strong>játékosoknak, bíróknak, edzőknek</strong>, akik nem csak érzésből,
-      hanem szabálykönyvből is szeretnének játszani. 😄
-    </p>
-
-    <h3 class="info-highlight-title">Hogyan működik?</h3>
-    <ul class="info-list">
-      <li>Minden témakör (T01–T07) az IFF 2022-es szabálykönyvén alapul.</li>
-      <li>A kérdések KLP (kulcstanulási pont) szerint vannak felépítve.</li>
-      <li>L1 = alapfogalmak, L2 = tipikus szituációk, L3 = “bírói agy” szint.</li>
-    </ul>
-
-    <h3 class="info-highlight-title">GYIK</h3>
-
-    <details>
-      <summary>Hivatalos-e az alkalmazás?</summary>
-      <p>
-        Nem. Ez egy rajongói, non-profit oktató eszköz.
-        A hivatalos szabályokért mindig a PDF szabálykönyvet kell nézni.
+  <!-- RESET MODAL -->
+  <div class="modal-overlay" id="reset-modal">
+    <div class="modal-box modal-box-center">
+      <span class="welcome-emoji">🗑️</span>
+      <h2 class="modal-title">Biztos törlöd az előrehaladást?</h2>
+      <p class="welcome-text">
+        Minden eddigi válasz, streak és teljesített szint törlődik <strong>csak ezen az eszközön</strong>.
+        A döntést nem lehet visszavonni.
       </p>
-    </details>
+      <div class="modal-actions">
+        <button class="btn-main danger" type="button" onclick="app.fullReset()">
+          Igen, mindent törlök
+        </button>
+        <button class="btn-main btn-main--secondary" type="button" onclick="app.toggleResetModal()">
+          Mégsem
+        </button>
+      </div>
+    </div>
+  </div>
 
-    <details>
-      <summary>Miből dolgoznak a kérdések?</summary>
-      <p>
-        A kérdések az IFF 2022-es játékszabályain és a magyar fordításon alapulnak.
-        A kérdések mellett <strong>szabálykönyv hivatkozást</strong> is találsz
-        (pl. 501/1), hogy gyorsan vissza tudd keresni az eredeti szöveget.
+  <!-- INFO + GYIK MODAL -->
+  <div class="modal-overlay" id="info-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Infó & GYIK</h2>
+        <button class="icon-btn modal-close" type="button" onclick="app.toggleInfo()">
+          <i class="ph-x"></i>
+        </button>
+      </div>
+
+      <div class="alert-box success">
+        <h3>Mi ez az app?</h3>
+        <p>
+          Egy hobbi-projekt, amely segít a magyar floorball közösségnek
+          (játékosok, edzők, bírók) a szabályok gyakorlásában.
+          Nem hivatalos IFF alkalmazás, de a kérdések a hivatalos szabálykönyvre épülnek.
+        </p>
+      </div>
+
+      <h3 class="modal-subtitle">Hogyan használd?</h3>
+      <ul class="info-list">
+        <li><strong>1.</strong> Válaszd ki a témakört (pl. Játéktér, Büntetések).</li>
+        <li><strong>2.</strong> Válassz szintet: L1 = alap, L2 = haladó, L3 = kemény dió.</li>
+        <li><strong>3.</strong> Válaszolj a kérdésekre – minden rossz válasz egy életet visz.</li>
+        <li><strong>4.</strong> A kérdés alatt magyarázatot és szabálykönyv hivatkozást kapsz.</li>
+        <li><strong>5.</strong> Ha mindent végigjátszottál, megkapod a „Floorball Mester” jelvényt.</li>
+      </ul>
+
+      <h3 class="modal-subtitle">GYIK</h3>
+
+      <details>
+        <summary>A kérdések hivatalos forrásból származnak?</summary>
+        <p>
+          A kérdések a hivatalos magyar fordítású szabálykönyv (2022) szövegére épülnek.
+          A projekt azonban <strong>nem hivatalos</strong>, oktatási célú kezdeményezés.
+        </p>
+      </details>
+
+      <details>
+        <summary>Mi az a „streak” a fejlécben?</summary>
+        <p>
+          A streak azt mutatja, hány kérdésre válaszoltál egymás után helyesen.
+          Ha hibázol, a számláló lenullázódik – ideális önszívató funkció edzésekre. 😄
+        </p>
+      </details>
+
+      <details>
+        <summary>Mit jelent a Párbaj kihívás (béta)?</summary>
+        <p>
+          Meghívhatsz egy másik játékost egy gyors párbajra. Ugyanazokat a kérdéseket kapjátok,
+          az nyer, aki előbb hibázik (vagy kevesebbet ront). A mód jelenleg kísérleti jellegű.
+        </p>
+      </details>
+
+      <details>
+        <summary>Melyik eszközön látom az előrehaladásomat?</summary>
+        <p>
+          Minden eredmény <strong>helyben</strong>, a böngésződben tárolódik.
+          Ha másik telefonról vagy gépről lépsz be, ott nulláról indul a játék.
+        </p>
+      </details>
+
+      <h3 class="modal-subtitle">Adatkezelés röviden</h3>
+      <p class="info-paragraph-top">
+        Az alkalmazás nem kér bejelentkezést, nevet, e-mail címet.
+        A haladásod és beállításaid <strong>localStorage-ben</strong> tárolódnak a készülékeden.
       </p>
-    </details>
+      <ul class="info-list info-list-compact">
+        <li>A kérdés-válasz eredmények személyhez nem köthetők.</li>
+        <li>
+          Az Umami analitika anonim módon méri, hogy hányan használják az oldalt
+          (pl. hány témakört nyitnak meg, mennyi időt töltenek itt).
+        </li>
+        <li>Ha mindent törölni szeretnél, használd a kuka ikont a fejlécben.</li>
+      </ul>
+    </div>
+  </div>
 
-    <details>
-      <summary>Mit jelent az L1–L2–L3 szint?</summary>
-      <p>
-        L1 – alapfogalmak, definíciók, egyszerű döntések.<br>
-        L2 – tipikus, meccsen gyakran előforduló szituációk.<br>
-        L3 – trükkös, vitás, bírói gondolkodást igénylő esetek.
+  <!-- iOS TELEPÍTÉSI ÚTMUTATÓ -->
+  <div class="modal-overlay" id="ios-install-modal">
+    <div class="modal-box modal-box-center">
+      <h2 class="modal-title">Telepítés iOS-re</h2>
+      <p class="welcome-text">
+        iPhone-on és iPaden nyisd meg az oldalt Safariban, majd válaszd a
+        <strong>Megosztás &raquo; Hozzáadás a Főképernyőhöz</strong> menüpontot.
+        Ezután úgy használhatod, mintha natív app lenne.
       </p>
-    </details>
+      <div class="modal-actions">
+        <button class="btn-main btn-main--accent" type="button" onclick="app.closeIosInstall()">
+          Értettem
+        </button>
+      </div>
+    </div>
+  </div>
 
-    <details>
-      <summary>Mi az a párbaj mód?</summary>
-      <p>
-        Két játékos valós időben méri össze a szabályismeretét.
-        Ugyanazokat a kérdéseket kapjátok, az nyer, aki előbb hibázik a másikhoz képest.
+  <!-- MULTIPLAYER: HOST MODAL (LINK MEGOSZTÁS) -->
+  <div class="modal-overlay" id="host-modal">
+    <div class="modal-box modal-box-center">
+      <h2 class="modal-title">Párbaj link megosztása</h2>
+      <p class="welcome-text">
+        Másold ki a linket, és küldd el az ellenfelednek. Ha csatlakozik,
+        automatikusan indul a párbaj.
       </p>
-    </details>
 
-    <h3 class="info-highlight-title">Adatkezelés &amp; technika</h3>
-    <ul class="info-list info-list-compact">
-      <li>
-        <strong>Mentés:</strong> az előrehaladásod a böngésződ
-        <code>localStorage</code>-ében tárolódik, nem kerül szerverre.
-      </li>
-      <li>
-        <strong>Umami analitika:</strong> névtelenül mérem,
-        mely témaköröket és menüpontokat használják a legtöbben
-        (pl. hányan nyitják meg a szabálykönyvet, mennyi single session indul).
-      </li>
-      <li>
-        <strong>Firebase Realtime Database:</strong> csak a párbaj módhoz használom,
-        ott ideiglenesen tárolódik a szoba azonosítója és a körök állapota.
-        Nincs user-fiók, nincs e-mail, nincs név.
-      </li>
-      <li>
-        <strong>GitHub Pages:</strong> innen töltődik be maga az oldal (statikus hosting).
-      </li>
-    </ul>
+      <input
+        id="share-link-input"
+        type="text"
+        readonly
+        style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(0,0,0,0.08); margin:12px 0;" />
 
-    <p class="info-paragraph-top" style="font-size:0.85rem; color:var(--text-muted);">
-      Ha bármilyen tartalmi hibát találsz a kérdésekben vagy hivatkozásokban,
-      jelezd kérlek a fejlesztőnek – a cél, hogy a magyar floorball közösségnek
-      legyen egy <strong>játékos, de szakmailag pontos</strong> eszköze.
-    </p>
-  </div>
-</div>
-
-<!-- RESET MODAL -->
-<div class="modal-overlay" id="reset-modal">
-  <div class="modal-box modal-box-center">
-    <div class="modal-header">
-      <h2 class="modal-title">Eredmények törlése</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.toggleResetModal()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-
-    <p>Biztosan törlöd az összes helyes választ, streaket és beállítást?</p>
-
-    <div class="modal-actions">
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.toggleResetModal()">
-        Mégsem
-      </button>
-      <button class="btn-main btn-main danger" type="button" onclick="app.fullReset()">
-        Igen, mindent törlök
-      </button>
+      <div class="modal-actions">
+        <button class="btn-main btn-main--accent" type="button" onclick="app.shareLink()">
+          Link másolása / megosztása
+        </button>
+        <button class="btn-main btn-main--secondary" type="button" onclick="app.cancelHost()">
+          Mégsem
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- iOS PWA TELEPÍTÉS TIPPEK -->
-<div class="modal-overlay" id="ios-install-modal">
-  <div class="modal-box modal-box-center">
-    <div class="modal-header">
-      <h2 class="modal-title">Telepítés iOS-en</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.closeIosInstall()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-    <p>
-      Safari-ban nyisd meg az oldalt, majd a megosztás ikonra (⬆️) nyomva válaszd:
-      <strong>Hozzáadás a Főképernyőhöz</strong>.
-    </p>
-    <div class="modal-actions">
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.closeIosInstall()">
-        Rendben
-      </button>
+  <!-- MULTIPLAYER: GUEST MODAL (KIHÍVÁS ELFOGADÁSA) -->
+  <div class="modal-overlay" id="challenge-modal">
+    <div class="modal-box modal-box-center">
+      <h2 class="modal-title">Párbaj kihívás</h2>
+      <p class="welcome-text">
+        Az ellenfeled párbajra hívott. Elfogadod a kihívást?
+      </p>
+      <div class="modal-actions">
+        <button class="btn-main btn-main--accent" type="button" onclick="app.acceptChallenge()">
+          Igen, indulhat!
+        </button>
+        <button class="btn-main btn-main--secondary" type="button" onclick="app.rejectChallenge()">
+          Nem most
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- HOST MODAL – SZOBÁK LÉTREHOZÁSA -->
-<div class="modal-overlay" id="host-modal">
-  <div class="modal-box modal-box-center">
-    <div class="modal-header">
-      <h2 class="modal-title">Párbaj szoba létrehozva</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.cancelHost()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-
-    <p>Oszd meg az alábbi linket az ellenfeleddel:</p>
-
-    <input id="share-link-input"
-           type="text"
-           readonly
-           style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(0,0,0,0.1); margin:10px 0 12px 0; font-size:0.85rem;">
-
-    <div class="modal-actions">
-      <button class="btn-main btn-main--accent" type="button" onclick="app.shareLink()">
-        Link másolása / megosztása
-      </button>
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.cancelHost()">
-        Mégsem
-      </button>
+  <!-- MULTIPLAYER: VÁRAKOZÁS AZ ELLENFÉLRE -->
+  <div class="modal-overlay" id="waiting-modal">
+    <div class="modal-box modal-box-center">
+      <h2 class="modal-title">Várakozás az ellenfélre…</h2>
+      <p class="welcome-text">
+        Te már válaszoltál erre a kérdésre. Várunk az ellenfél válaszára vagy időtúllépésére.
+      </p>
+      <div class="loader-spinner"></div>
     </div>
   </div>
-</div>
-
-<!-- GUEST MODAL – CSATLAKOZÁS SZOBÁHOZ -->
-<div class="modal-overlay" id="challenge-modal">
-  <div class="modal-box modal-box-center">
-    <div class="modal-header">
-      <h2 class="modal-title">Párbaj meghívó</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.rejectChallenge()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-
-    <p>Az ellenfeled kihívott egy floorball szabálypárbajra. Elfogadod?</p>
-
-    <div class="modal-actions">
-      <button class="btn-main btn-main--accent" type="button" onclick="app.acceptChallenge()">
-        Igen, csatlakozom
-      </button>
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.rejectChallenge()">
-        Most nem
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- VÁRAKOZÁS MODAL – PÁRBAJ KÖZBEN -->
-<div class="modal-overlay" id="waiting-modal">
-  <div class="modal-box modal-box-center">
-    <h2 class="modal-title">Várakozás az ellenfélre…</h2>
-    <p style="margin-bottom: 10px;">
-      Te már válaszoltál erre a kérdésre.  
-      Várjuk, hogy az ellenfél is befejezze a kört.
-    </p>
-    <div class="loader-spinner"></div>
-    <p style="font-size:0.8rem; color:var(--text-muted);">
-      Ha túl sokáig nem válaszol, a párbaj technikai okból megszakadhat.
-    </p>
-  </div>
-</div>
-
-<!-- REMATCH – ÚJ PÁRBAJ KÉRÉS MODAL (AZ ELLENFÉLNEK) -->
-<div class="modal-overlay" id="rematch-request-modal">
-  <div class="modal-box modal-box-center">
-    <div class="modal-header">
-      <h2 class="modal-title">Új párbaj?</h2>
-      <button class="icon-btn modal-close" type="button" onclick="app.rejectRematch()">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-    <p>Az ellenfeled új párbajt szeretne ugyanebben a szobában.</p>
-    <div class="modal-actions">
-      <button class="btn-main btn-main--accent" type="button" onclick="app.acceptRematch()">
-        Elfogadom az új párbajt
-      </button>
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.rejectRematch()">
-        Most inkább gyakorlok
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- REMATCH – VÁRAKOZÁS MODAL (AKI KÉRTE) -->
-<div class="modal-overlay" id="rematch-waiting-modal">
-  <div class="modal-box modal-box-center">
-    <h2 class="modal-title">Új párbaj kérése elküldve</h2>
-    <p>Várjuk, hogy a másik játékos elfogadja vagy elutasítsa a kérést.</p>
-    <div class="loader-spinner"></div>
-  </div>
-</div>
-
-<!-- REMATCH – ELUTASÍTÁS INFÓ MODAL -->
-<div class="modal-overlay" id="rematch-info-modal">
-  <div class="modal-box modal-box-center">
-    <h2 class="modal-title">Párbaj elutasítva</h2>
-    <p>
-      A másik játékos elutasította az új párbajt.  
-      Menj vissza gyakorolni, és legközelebb lepipálod! 💪
-    </p>
-    <div class="modal-actions">
-      <button class="btn-main btn-main--secondary" type="button" onclick="app.closeRematchInfo()">
-        Rendben
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Telepítés gomb (PWA) – JS teszi láthatóvá -->
-<button id="install-btn"
-        class="btn-main btn-main--accent btn-pulse"
-        style="position:fixed; right:16px; bottom:16px; left:16px; display:none; z-index:1500;"
-        type="button"
-        onclick="app.triggerInstall()">
-  📲 Telepítés a kezdőképernyőre
-</button>
-
-<!-- Külső script-ek a legvégén -->
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-
-<!-- Firebase v8 – csak a párbaj módhoz kell -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<!-- Fő alkalmazás logika – EZT A FÁJLT HOZD LÉTRE: app.js -->
-<script src="app.js"></script>
 </body>
 </html>
