@@ -221,12 +221,6 @@ body {
   display: flex;
 }
 
-/* opcionális, hogy a főmenü is szépen flext tartsa a kartákat */
-.screen-menu {
-  display: flex;
-  flex-direction: column;
-}
-
 h2 {
   font-size: 0.8rem;
   font-weight: 700;
