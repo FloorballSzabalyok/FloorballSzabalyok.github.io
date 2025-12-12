@@ -52,21 +52,6 @@ const CONFIG = {
   ROUND_TIME: 30 // másodperc / kör a multiplayerben
 };
 
-// --- UMAMI ANALYTICS HELPER ---
-
-function trackEvent(eventName, data = {}) {
-  try {
-    const hasData = data && Object.keys(data).length > 0;
-    if (typeof window !== "undefined" && window.umami && typeof window.umami.track === "function") {
-      window.umami.track(eventName, hasData ? data : undefined);
-    } else if (typeof umami !== "undefined" && typeof umami.track === "function") {
-      umami.track(eventName, hasData ? data : undefined);
-    }
-  } catch (e) {
-    console.warn("Umami track hiba:", e);
-  }
-}
-
 const LIFE_SVG = `
 <svg class="life-icon" viewBox="0 0 100 100" fill="none"
      xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -113,7 +98,17 @@ const app = {
     roastIndex: 0 // következő roast sorszáma
   },
 
-  session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
+  session: {
+    topic: null,
+    level: null,
+    qList: [],
+    idx: 0,
+    lives: 3,
+    isMulti: false,
+    roundNumber: 0,
+    totalRounds: 0,
+    answeredCount: 0
+  },
 
   // Multi / adatbázis változók
   db: null,
@@ -129,12 +124,24 @@ const app = {
   waitingTimeoutId: null,
   deferredPrompt: null,
 
-  // Rematch / multi state
-  lastRoomData: null,
-  _rematchPromptShown: false,
-  _rematchNotifiedAccepted: false,
-  _rematchNotifiedRejected: false,
-  _currentMatchId: 0,
+  // Rematch segédváltozók
+  rematchRequestInProgress: false,
+  _rematchStartedToken: null,
+
+  // --- UMAMI HELPER ---
+  track(eventName, data) {
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.umami &&
+        typeof window.umami.track === "function"
+      ) {
+        window.umami.track(eventName, data);
+      }
+    } catch (e) {
+      console.warn("Umami track hiba:", e);
+    }
+  },
 
   // --- INIT ---
   async init() {
@@ -159,14 +166,14 @@ const app = {
       this.checkWelcome();
       this.initInstallButton();
 
-      trackEvent("app_init");
-
       // Globális takarító listener (ha host zárja be)
       window.addEventListener("beforeunload", () => {
         if (this.myPlayerId === "host" && this.roomRef) {
-          this.roomRef.remove().catch((err) =>
-            console.error("Szoba törlés hiba beforeunload:", err)
-          );
+          this.roomRef
+            .remove()
+            .catch((err) =>
+              console.error("Szoba törlés hiba beforeunload:", err)
+            );
         }
       });
 
@@ -185,6 +192,8 @@ const app = {
           );
         }
       }
+
+      this.track("app_init");
     } catch (error) {
       console.error("Hiba:", error);
       if (container)
@@ -242,7 +251,8 @@ const app = {
     let totalAnswered = 0;
 
     (this.topics || []).forEach((topicMeta) => {
-      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const topicId =
+        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
       const topicData = this.db[topicId] || {};
 
       CONFIG.LEVELS.forEach((level) => {
@@ -355,7 +365,8 @@ const app = {
     let allCompleted = true;
 
     (this.topics || []).forEach((topicMeta, index) => {
-      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+      const topicId =
+        typeof topicMeta === "string" ? topicMeta : topicMeta.id;
       const rawName =
         typeof topicMeta === "string"
           ? topicMeta
@@ -429,11 +440,8 @@ const app = {
           </div>
         `;
 
-      // teljes kártya kattintható → szintválasztó + analitika
-      card.addEventListener("click", () => {
-        trackEvent("topic_open", { topicId, topicName: rawName });
-        this.showLevels(topicId);
-      });
+      // teljes kártya kattintható → szintválasztó
+      card.addEventListener("click", () => this.showLevels(topicId));
 
       container.appendChild(card);
     });
@@ -469,6 +477,8 @@ const app = {
 
   showLevels(topicId) {
     if (!this.db) return;
+
+    this.track("topic_open", { topicId });
 
     const topicData = this.db[topicId] || {};
     const lvlTitle = document.getElementById("lvl-title");
@@ -557,7 +567,9 @@ const app = {
 
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
-      alert("A multiplayerhez internet és érvényes Firebase beállítás szükséges!");
+      alert(
+        "A multiplayerhez internet és érvényes Firebase beállítás szükséges!"
+      );
       return;
     }
     if (!this.db || !Object.keys(this.questionIndex).length) {
@@ -600,13 +612,12 @@ const app = {
       hostAnswer: "pending",
       guestAnswer: "pending",
       questions: questionsForRoom,
-      matchId: 1,
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
       rematch: {
         status: "none",
-        requestedBy: null,
-        respondedBy: null
-      },
-      createdAt: firebase.database.ServerValue.TIMESTAMP
+        from: null,
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      }
     };
 
     this.roomRef
@@ -619,14 +630,14 @@ const app = {
         const input = document.getElementById("share-link-input");
         if (input) input.value = link;
 
-        trackEvent("multi_room_created", {
-          roomId,
-          totalRounds
-        });
-
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
         );
+
+        this.track("multi_room_created", {
+          roomId,
+          questionCount: totalRounds
+        });
       })
       .catch((err) => {
         console.error("Nem sikerült létrehozni a szobát:", err);
@@ -653,6 +664,8 @@ const app = {
         if (data && data.status === "waiting") {
           const challengeModal = document.getElementById("challenge-modal");
           if (challengeModal) challengeModal.classList.add("open");
+
+          this.track("multi_join_ready", { roomId });
         } else {
           alert("A szoba már nem elérhető.");
           this.currentRoomId = null;
@@ -691,6 +704,9 @@ const app = {
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
         );
+        this.track("multi_join_accepted", {
+          roomId: this.currentRoomId
+        });
       })
       .catch((err) => {
         console.error("acceptChallenge update hiba:", err);
@@ -714,8 +730,6 @@ const app = {
   },
 
   onRoomUpdate(data) {
-    this.lastRoomData = data || null;
-
     if (!data) {
       if (this.currentRoomId) {
         alert("A kapcsolat megszakadt, a szoba bezárult.");
@@ -725,56 +739,13 @@ const app = {
       return;
     }
 
-    const rematch = data.rematch || null;
-
-    // Rematch prompt reset
-    if (!rematch || rematch.status !== "requested") {
-      this._rematchPromptShown = false;
-    }
-
-    // Ha engem kérnek új párbajra
-    if (
-      rematch &&
-      rematch.status === "requested" &&
-      rematch.requestedBy &&
-      rematch.requestedBy !== this.myPlayerId &&
-      !this._rematchPromptShown
-    ) {
-      this._rematchPromptShown = true;
-      const accept = confirm("Az ellenfeled új párbajt szeretne. Elfogadod?");
-      if (accept) {
-        this.acceptRematch();
-      } else {
-        this.rejectRematch();
-      }
-    }
-
-    // Ha én kértem, értesítés az eredményről
-    if (rematch && rematch.requestedBy === this.myPlayerId) {
-      if (rematch.status === "accepted" && !this._rematchNotifiedAccepted) {
-        this._rematchNotifiedAccepted = true;
-        alert("Az ellenfeled elfogadta az új párbajt. Indul az új meccs!");
-      }
-      if (rematch.status === "rejected" && !this._rematchNotifiedRejected) {
-        this._rematchNotifiedRejected = true;
-        alert(
-          "Másik játékos elutasította az új párbajt, menj vissza gyakorolni!"
-        );
-      }
-    } else {
-      this._rematchNotifiedAccepted = false;
-      this._rematchNotifiedRejected = false;
-    }
-
     // Játék indítása
     if (data.status === "playing") {
       const hostModal = document.getElementById("host-modal");
       if (hostModal && hostModal.classList.contains("open")) {
         hostModal.classList.remove("open");
       }
-
-      const matchId = data.matchId || 1;
-      if (this._currentMatchId !== matchId) {
+      if (!this.session.isMulti) {
         this.startGameFromRoom(data);
       }
     }
@@ -816,6 +787,66 @@ const app = {
     if (this.session.isMulti && data.round > this.session.roundNumber) {
       this.startNextMultiRound(data.round);
     }
+
+    // --- Rematch állapot figyelése ---
+    if (data.rematch && data.rematch.status && data.rematch.status !== "none") {
+      const r = data.rematch;
+      const infoModal = document.getElementById("rematch-info-modal");
+      const requestModal = document.getElementById("rematch-request-modal");
+
+      if (r.status === "pending") {
+        if (r.from === this.myPlayerId) {
+          // Én kértem új párbajt → várakozó infó
+          if (infoModal) infoModal.classList.add("open");
+          if (requestModal) requestModal.classList.remove("open");
+        } else {
+          // A másik játékos kért rematch-et → döntő modál
+          if (requestModal) requestModal.classList.add("open");
+          if (infoModal) infoModal.classList.remove("open");
+        }
+      } else if (r.status === "accepted") {
+        if (infoModal) infoModal.classList.remove("open");
+        if (requestModal) requestModal.classList.remove("open");
+
+        // Csak a kérő indítsa el ténylegesen az új párbajt
+        if (r.from === this.myPlayerId && !this._rematchStartedToken) {
+          this._rematchStartedToken = Date.now();
+          this.prepareRematchGame(data);
+        }
+      } else if (r.status === "rejected") {
+        if (requestModal) requestModal.classList.remove("open");
+
+        // Kérő oldalán jelenik meg az üzenet
+        if (r.from === this.myPlayerId) {
+          if (infoModal) {
+            infoModal.classList.add("open");
+            const infoText = document.getElementById("rematch-info-text");
+            if (infoText) {
+              infoText.textContent =
+                "A másik játékos elutasította az új párbajt, menj vissza gyakorolni!";
+            }
+          } else {
+            alert(
+              "A másik játékos elutasította az új párbajt, menj vissza gyakorolni!"
+            );
+          }
+        } else if (infoModal) {
+          infoModal.classList.remove("open");
+        }
+
+        // Host takarít pár másodperc után
+        if (this.myPlayerId === "host" && this.roomRef) {
+          setTimeout(() => {
+            this.roomRef
+              .child("rematch")
+              .remove()
+              .catch((err) =>
+                console.error("Rematch törlés hiba (rejected):", err)
+              );
+          }, 4000);
+        }
+      }
+    }
   },
 
   startGameFromRoom(roomData) {
@@ -837,9 +868,16 @@ const app = {
 
     this.seed = roomData.seed || Date.now();
 
+    // Multi duel start event – csak egyszer, a host oldalán
+    if (this.myPlayerId === "host") {
+      this.track("multi_duel_start", {
+        roomId: this.currentRoomId,
+        totalRounds: questionIds.length
+      });
+    }
+
     this.start("MULTI", "MULTI", true, questionIds);
     this.session.roundNumber = roomData.round || 1;
-    this._currentMatchId = roomData.matchId || 1;
   },
 
   evaluateRound(hAns, gAns, currentRound) {
@@ -922,7 +960,7 @@ const app = {
       if (iconEl) iconEl.innerText = "🤝";
     }
 
-    // Gombok: Új párbaj ugyanazzal + Vissza a főmenübe
+    // Gombok: Új párbaj + Vissza a főmenübe
     const actions = document.getElementById("end-actions");
     if (actions) {
       actions.innerHTML = "";
@@ -948,124 +986,178 @@ const app = {
       }, 150);
     }
 
-    // Analytics: párbaj vége
-    try {
-      const playedRounds =
-        this.session && typeof this.session.roundNumber === "number"
-          ? this.session.roundNumber
-          : null;
+    // Umami – párbaj statisztika (host oldaláról elég)
+    if (this.myPlayerId === "host") {
+      const roundsPlayed = this.session.roundNumber || 1;
       const totalRounds =
-        this.session && typeof this.session.totalRounds === "number"
-          ? this.session.totalRounds
-          : null;
-
-      trackEvent("multi_end", {
+        this.session.totalRounds ||
+        (this.session.qList ? this.session.qList.length : 0);
+      this.track("multi_duel_end", {
+        roomId: this.currentRoomId,
         result,
-        playedRounds,
+        roundsPlayed,
         totalRounds
       });
-    } catch (e) {
-      console.warn("Umami multi_end hiba:", e);
     }
+
+    // multi flag reset – hogy új "playing" állapotnál ismét elindulhasson a játék
+    this.session.isMulti = false;
   },
 
-  // --- REMATCH LOGIKA (ugyanazzal az ellenféllel, ugyanabban a szobában) ---
-
+  // Rematch indítása (host VAGY guest oldalról, link nélkül)
   requestRematch() {
-    if (!this.roomRef || !this.currentRoomId) {
-      alert("A párbaj szoba már lezárult, indíts új párbajt.");
+    if (!this.currentRoomId || !this.roomRef) {
+      alert("Technikai hiba: nincs aktív párbaj szoba.");
       return;
     }
+
+    if (this.rematchRequestInProgress) return;
+    this.rematchRequestInProgress = true;
+
+    const payload = {
+      status: "pending",
+      from: this.myPlayerId || "host",
+      createdAt:
+        typeof firebase !== "undefined" && firebase.database
+          ? firebase.database.ServerValue.TIMESTAMP
+          : Date.now()
+    };
+
+    this.roomRef
+      .child("rematch")
+      .set(payload)
+      .then(() => {
+        this.rematchRequestInProgress = false;
+        const infoModal = document.getElementById("rematch-info-modal");
+        if (infoModal) infoModal.classList.add("open");
+
+        const infoText = document.getElementById("rematch-info-text");
+        if (infoText) {
+          infoText.textContent =
+            "Új párbajt kértél. Várakozás az ellenfél válaszára...";
+        }
+
+        this.track("multi_rematch_request_sent", {
+          from: this.myPlayerId || "unknown"
+        });
+      })
+      .catch((err) => {
+        console.error("Rematch kérés hiba:", err);
+        this.rematchRequestInProgress = false;
+        alert("Nem sikerült elküldeni az új párbaj kérést.");
+      });
+  },
+
+  handleRematchResponse(accept) {
+    if (!this.roomRef) return;
+
+    this.roomRef
+      .child("rematch")
+      .once("value")
+      .then((snap) => {
+        const r = snap.val();
+        if (!r || r.status !== "pending") return;
+        if (r.from === this.myPlayerId) return; // saját kérést nem mi bíráljuk el
+
+        const newStatus = accept ? "accepted" : "rejected";
+        return this.roomRef.child("rematch/status").set(newStatus);
+      })
+      .then(() => {
+        this.track("multi_rematch_response", {
+          accepted: !!accept,
+          by: this.myPlayerId || "unknown"
+        });
+
+        const requestModal = document.getElementById("rematch-request-modal");
+        if (requestModal) requestModal.classList.remove("open");
+      })
+      .catch((err) => {
+        console.error("Rematch válasz hiba:", err);
+      });
+  },
+
+  cancelRematchRequest() {
+    if (!this.roomRef) return;
+
+    this.roomRef
+      .child("rematch")
+      .once("value")
+      .then((snap) => {
+        const r = snap.val();
+        if (!r || r.status !== "pending") return;
+        if (r.from !== this.myPlayerId) return;
+        return this.roomRef.child("rematch").remove();
+      })
+      .then(() => {
+        const infoModal = document.getElementById("rematch-info-modal");
+        if (infoModal) infoModal.classList.remove("open");
+      })
+      .catch((err) => {
+        console.error("Rematch megszakítási hiba:", err);
+      });
+  },
+
+  closeRematchModals() {
+    const m1 = document.getElementById("rematch-request-modal");
+    const m2 = document.getElementById("rematch-info-modal");
+    if (m1) m1.classList.remove("open");
+    if (m2) m2.classList.remove("open");
+  },
+
+  prepareRematchGame(roomData) {
+    if (!this.roomRef) return;
+    if (!this.db || !this.questionIndex) {
+      alert("Technikai hiba: kérdésbank nem érhető el az új párbajhoz.");
+      this._rematchStartedToken = null;
+      return;
+    }
+
     try {
-      this.roomRef.update({
-        rematch: {
-          status: "requested",
-          requestedBy: this.myPlayerId,
-          respondedBy: null,
-          ts: Date.now()
-        }
-      });
-      trackEvent("multi_rematch_request", {
-        by: this.myPlayerId
-      });
-      alert("Új párbaj kérése elküldve. Várakozás az ellenfélre...");
+      const allQuestionIds = Object.keys(this.questionIndex || {});
+      if (allQuestionIds.length < 2) {
+        alert("Nincs elég kérdés az új párbajhoz.");
+        this._rematchStartedToken = null;
+        return;
+      }
+
+      const shuffledIds = this.shuffle([...allQuestionIds]);
+      const totalRounds = Math.min(
+        CONFIG.MULTI_MAX_QUESTIONS,
+        shuffledIds.length
+      );
+      const questionsForRoom = shuffledIds.slice(0, totalRounds);
+      const seed = Math.floor(Math.random() * 1e9);
+
+      const rematchBase = roomData && roomData.rematch ? roomData.rematch : {};
+
+      this.roomRef
+        .update({
+          status: "playing",
+          seed: seed,
+          round: 1,
+          hostAnswer: "pending",
+          guestAnswer: "pending",
+          questions: questionsForRoom,
+          rematch: {
+            status: "none",
+            from: rematchBase.from || this.myPlayerId || "host",
+            createdAt:
+              typeof firebase !== "undefined" && firebase.database
+                ? firebase.database.ServerValue.TIMESTAMP
+                : Date.now()
+          }
+        })
+        .then(() => {
+          this._rematchStartedToken = null;
+        })
+        .catch((err) => {
+          console.error("Új párbaj indítás hiba (rematch):", err);
+          this._rematchStartedToken = null;
+        });
     } catch (e) {
-      console.error("Rematch update hiba:", e);
-      alert("Nem sikerült elküldeni az új párbaj kérését.");
+      console.error("Rematch előkészítés hiba:", e);
+      this._rematchStartedToken = null;
     }
-  },
-
-  acceptRematch() {
-    if (!this.roomRef || !this.lastRoomData) return;
-
-    const allQuestionIds = Object.keys(this.questionIndex || {});
-    if (!allQuestionIds.length) {
-      alert("Nincs elég kérdés az új párbajhoz.");
-      this.rejectRematch(true);
-      return;
-    }
-
-    const shuffledIds = this.shuffle([...allQuestionIds]);
-    const totalRounds = Math.min(
-      CONFIG.MULTI_MAX_QUESTIONS,
-      shuffledIds.length
-    );
-    const questionsForRoom = shuffledIds.slice(0, totalRounds);
-    const seed = Math.floor(Math.random() * 1e9);
-
-    const prevMatchId = this.lastRoomData.matchId || 1;
-    const rematchInfo = this.lastRoomData.rematch || {};
-
-    this.roomRef
-      .update({
-        status: "playing",
-        seed: seed,
-        round: 1,
-        hostAnswer: "pending",
-        guestAnswer: "pending",
-        questions: questionsForRoom,
-        matchId: prevMatchId + 1,
-        rematch: {
-          status: "accepted",
-          requestedBy: rematchInfo.requestedBy || null,
-          respondedBy: this.myPlayerId,
-          ts: Date.now()
-        }
-      })
-      .then(() => {
-        trackEvent("multi_rematch_accept", {
-          by: this.myPlayerId
-        });
-      })
-      .catch((err) => {
-        console.error("Rematch accept update hiba:", err);
-        alert("Nem sikerült elindítani az új párbajt.");
-      });
-  },
-
-  rejectRematch(silent) {
-    if (!this.roomRef || !this.lastRoomData) return;
-    const rematchInfo = this.lastRoomData.rematch || {};
-    this.roomRef
-      .update({
-        rematch: {
-          status: "rejected",
-          requestedBy: rematchInfo.requestedBy || null,
-          respondedBy: this.myPlayerId,
-          ts: Date.now()
-        }
-      })
-      .then(() => {
-        trackEvent("multi_rematch_reject", {
-          by: this.myPlayerId
-        });
-        if (!silent) {
-          alert("Elutasítottad az új párbaj kérését.");
-        }
-      })
-      .catch((err) => {
-        console.error("Rematch reject update hiba:", err);
-      });
   },
 
   // --- GAME ENGINE ---
@@ -1130,30 +1222,40 @@ const app = {
             "Már megoldottad az összes kérdést ezen a szinten.\nIndítsd újra gyakorlás módban?"
           )
         ) {
+          const practiceList = this.shuffle([...qList]);
           this.session = {
             topic,
             level,
-            qList: this.shuffle([...qList]), // sima random gyakorláshoz
+            qList: practiceList,
             idx: 0,
-            lives: 3
+            lives: 3,
+            isMulti: false,
+            roundNumber: 0,
+            totalRounds: practiceList.length,
+            answeredCount: 0
           };
-          this.showScreen("s-game");
-          this.renderQ();
-
-          trackEvent("single_start", {
-            topic,
-            level,
-            totalQuestions: this.session.qList.length,
-            mode: "practice_repeat"
-          });
+        } else {
+          return;
         }
-        return;
+      } else {
+        this.session = {
+          topic,
+          level,
+          qList: toPlay,
+          idx: 0,
+          lives: 3,
+          isMulti: false,
+          roundNumber: 0,
+          totalRounds: toPlay.length,
+          answeredCount: 0
+        };
       }
-
-      this.session = { topic, level, qList: toPlay, idx: 0, lives: 3 };
     } else {
       // MULTI: dinamikus körszám, ne fogyjon el a kérdés
-      const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
+      const totalRounds = Math.min(
+        CONFIG.MULTI_MAX_QUESTIONS,
+        qList.length
+      );
       qList = qList.slice(0, totalRounds);
 
       this.session = {
@@ -1164,31 +1266,25 @@ const app = {
         lives: 3,
         isMulti: true,
         roundNumber: 1,
-        totalRounds
+        totalRounds,
+        answeredCount: 0
       };
     }
 
     this.hasAnsweredThisRound = false;
     this.lastEvaluatedRound = 0;
+    this.session.answeredCount = 0;
+
     this.showScreen("s-game");
     this.renderQ();
 
-    // Analitika: session indulás
-    try {
-      if (isMulti) {
-        trackEvent("multi_session_start", {
-          totalRounds: this.session.totalRounds
-        });
-      } else {
-        trackEvent("single_start", {
-          topic,
-          level,
-          totalQuestions: this.session.qList.length,
-          mode: "normal"
-        });
-      }
-    } catch (e) {
-      console.warn("Umami start track hiba:", e);
+    // Single session start tracking
+    if (!isMulti) {
+      this.track("single_session_start", {
+        topic: this.session.topic,
+        level: this.session.level,
+        questionCount: this.session.qList.length
+      });
     }
   },
 
@@ -1249,12 +1345,18 @@ const app = {
       }
     }
 
-    document.getElementById("q-text").textContent = q.q;
+    const qTextEl = document.getElementById("q-text");
+    if (qTextEl) qTextEl.textContent = q.q;
+
     const cont = document.getElementById("g-opts");
+    if (!cont) return;
     cont.style.display = "block";
     cont.innerHTML = "";
     const feed = document.getElementById("g-feed");
-    feed.style.display = "none";
+    if (feed) {
+      feed.style.display = "none";
+      feed.innerHTML = "";
+    }
 
     const progEl = document.getElementById("g-prog");
     if (progEl && this.session.qList.length) {
@@ -1331,6 +1433,12 @@ const app = {
 
   check(i, btn) {
     const q = this.session.qList[this.session.idx];
+    if (!q) return;
+
+    // Session szintű kérdésszámláló
+    this.session.answeredCount =
+      (this.session.answeredCount || 0) + 1;
+
     const isOk = i === q.c;
 
     if (this.session.isMulti) {
@@ -1382,13 +1490,14 @@ const app = {
   },
 
   showFeedback(isOk, q) {
-    const livesEl = document.getElementById("g-lives");
-    if (livesEl) {
-      livesEl.innerText = "❤️".repeat(Math.max(this.session.lives, 0));
-    }
-    document.getElementById("g-opts").style.display = "none";
+    // SVG-s élet ikonok frissítése, nincs külön ❤️ emoji
+    this.renderLives();
+
+    const opts = document.getElementById("g-opts");
+    if (opts) opts.style.display = "none";
 
     const feed = document.getElementById("g-feed");
+    if (!feed) return;
     feed.style.display = "block";
     feed.className = isOk ? "feedback ok" : "feedback bad";
 
@@ -1431,6 +1540,8 @@ const app = {
     const msgEl = document.getElementById("end-msg");
     const scoreEl = document.getElementById("end-score");
 
+    const isWin = !!win;
+
     // Single playernél pontszám látszik, multi esetben nem
     if (!this.session.isMulti && scoreEl) {
       scoreEl.style.display = "block";
@@ -1461,8 +1572,6 @@ const app = {
       this.saveUser();
     }
 
-    const isWin = !!win;
-
     // Csak a felső ikonban van emoji
     if (iconEl) iconEl.innerText = isWin ? "🎉" : "💀";
 
@@ -1483,9 +1592,19 @@ const app = {
     }
 
     if (scoreEl && !this.session.isMulti) {
-      const solvedCount = this.session.idx;
+      const solvedCount =
+        this.session.answeredCount || this.session.idx;
       const totalCount = this.session.qList.length;
       scoreEl.innerText = `${solvedCount}/${totalCount}`;
+
+      // Umami – single session vége + kérdésszám
+      this.track("single_session_end", {
+        topic: this.session.topic,
+        level: this.session.level,
+        answered: solvedCount,
+        total: totalCount,
+        result: isWin ? "completed" : "game_over"
+      });
     }
 
     const actions = document.getElementById("end-actions");
@@ -1503,36 +1622,6 @@ const app = {
           block: "end"
         });
       }, 150);
-    }
-
-    // Analitika: single session összefoglaló
-    if (!this.session.isMulti) {
-      try {
-        const totalCount =
-          this.session && this.session.qList
-            ? this.session.qList.length
-            : 0;
-        let answeredCount = 0;
-
-        if (win) {
-          answeredCount = totalCount;
-        } else {
-          answeredCount = Math.min(
-            (this.session.idx || 0) + 1,
-            totalCount
-          );
-        }
-
-        trackEvent("single_end", {
-          topic: this.session.topic,
-          level: this.session.level,
-          win: !!win,
-          answered: answeredCount,
-          total: totalCount
-        });
-      } catch (e) {
-        console.warn("Umami single_end hiba:", e);
-      }
     }
   },
 
@@ -1683,11 +1772,15 @@ const app = {
       window.innerWidth >= 900 &&
       !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+    this.track("rules_open", {
+      mode: isDesktop ? "new_tab" : "in_app"
+    });
+
     if (isDesktop) {
-      trackEvent("rules_open_desktop");
+      // Laptop / PC: PDF megnyitása teljes fülön
       window.open(pdfUrl, "_blank");
     } else {
-      trackEvent("rules_open_mobile");
+      // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
       this.showScreen("s-rules");
     }
   },
@@ -1711,10 +1804,16 @@ const app = {
     this.showScreen("s-menu");
     this.renderMenu();
 
+    // Multi flag reset, hogy új párbaj esetén ne akadjon el
+    this.session.isMulti = false;
+
+    // Mindig a főmenü tetejére ugrunk a content-ben
     const content = document.querySelector(".content");
     if (content && content.scrollTo) {
       content.scrollTo({ top: 0, behavior: "smooth" });
     }
+
+    this.track("menu_view");
   },
 
   showScreen(id) {
