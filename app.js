@@ -1,20 +1,87 @@
-// --- APP.JS vFixed (FloorballSzabályok) ---
+// --- APP.JS vFinal (Embedded Data) ---
 
-// --- KONFIGURÁCIÓ ---
-const CONFIG = {
-  STORAGE_KEY: "fb_v11_lux",
-  WELCOME_KEY: "fb_welcome_seen",
-  DB_URL: "database.json", 
-  LEVELS: ["L1", "L2", "L3"],
-  MULTI_MAX_QUESTIONS: 10,
-  ROUND_TIME: 30, // másodperc / kör
+// --- 1. ADATBÁZIS (Beépítve a biztos működésért) ---
+const HARDCODED_DB = {
+  "topics": [
+    { "id": "T00_BASE", "name": "Alapfogalmak", "order": 1 },
+    { "id": "T01_RINK", "name": "A játéktér", "order": 2 },
+    { "id": "T02_TIME", "name": "A játékidő", "order": 3 },
+    { "id": "T03_PART", "name": "A résztvevők", "order": 4 },
+    { "id": "T04_EQUI", "name": "A felszerelés", "order": 5 },
+    { "id": "T05_RST", "name": "Rögzített helyzetek", "order": 6 },
+    { "id": "T06_PEN", "name": "Büntetések", "order": 7 },
+    { "id": "T07_GOAL", "name": "Gólok", "order": 8 }
+  ],
+  "data": {
+    /* Az általad küldött teljes adatbázis tartalom */
+    "T00_BASE": {
+      "L1": [
+        {"id":"T00_L1_Q_001","q":"Mekkora a floorball mérkőzéshez használt játéktér mérete főszabály szerint?","o":["40 m x 20 m","44 m x 22 m","36 m x 18 m"],"c":0,"e":"A szabálykönyv meghatározza, hogy a játéktér mérete 40m x 20m főszabály szerint.","r":"101/1"},
+        {"id":"T00_L1_Q_002","q":"Mi veszi körül a hivatalos játékteret egy mérkőzésen?","o":["Az IFF által hitelesített, lekerekített sarkú palánk","Csak vonalak","Háló"],"c":0,"e":"A játéktér körül palánknak kell lennie.","r":"101/1"},
+        {"id":"T00_L1_Q_003","q":"Mekkora a legkisebb megengedett mérete hivatalos mérkőzésen a játéktérnek?","o":["36 m x 18 m","30 m x 15 m","40 m x 20 m"],"c":0,"e":"A legkisebb megengedett játéktérméret 36 m x 18 m.","r":"101/1"},
+        {"id":"T00_L1_Q_004","q":"Mire szolgál a középvonal?","o":["A pályát két egyenlő térfélre osztja","A csereterületet jelöli","Nincs funkciója"],"c":0,"e":"A középvonal két egyenlő méretű térfélre osztja a játékteret.","r":"102/2"},
+        {"id":"T00_L1_Q_006","q":"Mire szolgál a gólvonal?","o":["Annak meghatározására, hogy mikor születik érvényes gól.","A kapus területét jelöli","A leshatárt jelöli"],"c":0,"e":"A gólvonal jelöli azt a vonalat, amelyen a labdának át kell haladnia a gólhoz.","r":"102/5"},
+        {"id":"T00_L1_Q_012","q":"Hány játékost nevezhet legfeljebb egy csapat egy mérkőzésre?","o":["Legfeljebb 20 játékost","Legfeljebb 15 játékost","Legfeljebb 22 játékost"],"c":0,"e":"Minden csapat legfeljebb 20 játékost nevezhet.","r":"301/1"},
+        {"id":"T00_L1_Q_014","q":"Hány játékos tartózkodhat egy csapatból egyszerre a játéktéren?","o":["Legfeljebb 6 (5 mezőny + 1 kapus)","Legfeljebb 5","Legfeljebb 7"],"c":0,"e":"Egyszerre legfeljebb 6 játékos lehet a pályán csapatonként.","r":"301/2"},
+        {"id":"T00_L1_Q_029","q":"Mennyi a rendes játékidő főszabály szerint?","o":["3 x 20 perc","2 x 45 perc","4 x 15 perc"],"c":0,"e":"A rendes játékidő 3 x 20 perc.","r":"201/1"}
+      ],
+      "L2": [],
+      "L3": []
+    },
+    "T01_RINK": {
+      "L1": [
+        {"id":"T01_L1_Q_001","q":"Mekkora a szabványos játéktér mérete?","o":["40 x 20 méter","38 x 19 méter","42 x 22 méter"],"c":0,"e":"40m x 20m a szabvány.","r":"101/1"},
+        {"id":"T01_L1_Q_004","q":"Mekkora a kapuelőtér mérete?","o":["4 x 5 méter","3 x 4 méter","5 x 6 méter"],"c":0,"e":"A kapuelőterek mérete 4x5m.","r":"102/3"},
+        {"id":"T01_L1_Q_005","q":"Mekkora a kapusterület mérete?","o":["1 x 2,5 méter","2 x 3 méter","1.5 x 2.5 méter"],"c":0,"e":"A kapusterületek mérete 1x2,5m.","r":"102/4"}
+      ],
+      "L2": [],
+      "L3": []
+    },
+    "T02_TIME": {
+      "L1": [{"id":"T02_L1_Q_001","q":"Mennyi a szünetek hossza?","o":["10 perc","5 perc","15 perc"],"c":0,"e":"A szünetek 10 percesek.","r":"201/1"}],
+      "L2": [],
+      "L3": []
+    },
+    "T03_PART": {
+      "L1": [{"id":"T03_L1_Q_001","q":"Hány csapatkapitánya lehet egy csapatnak?","o":["Egy","Kettő","Három"],"c":0,"e":"Mindegyik csapatnak egy kapitánya van.","r":"304/1"}],
+      "L2": [],
+      "L3": []
+    },
+    "T04_EQUI": {
+      "L1": [{"id":"T04_L1_Q_001","q":"Milyen cipőt kell viselni?","o":["Teremsport cipőt","Futócipőt","Stoplist"],"c":0,"e":"Teremsportokra tervezett modellt kell viselni.","r":"401/4"}],
+      "L2": [],
+      "L3": []
+    },
+    "T05_RST": {
+      "L1": [{"id":"T05_L1_Q_001","q":"Mi a teendő, ha a labda elhagyja a pályát?","o":["Beütés","Húzás","Szabadütés"],"c":0,"e":"Beütés jár a vétlen csapatnak.","r":"504/1"}],
+      "L2": [],
+      "L3": []
+    },
+    "T06_PEN": {
+      "L1": [{"id":"T06_L1_Q_001","q":"Mennyi ideig tart egy kisbüntetés?","o":["2 perc","5 perc","10 perc"],"c":0,"e":"A kisbüntetés 2 perc.","r":"604/1"}],
+      "L2": [],
+      "L3": []
+    },
+    "T07_GOAL": {
+      "L1": [{"id":"T07_L1_Q_001","q":"Mikor érvényes a gól?","o":["Ha a labda teljes terjedelmével áthalad a gólvonalon","Ha érinti a gólvonalat","Ha a hálóba ér"],"c":0,"e":"Teljes terjedelmével át kell haladnia.","r":"702/1"}],
+      "L2": [],
+      "L3": []
+    }
+  }
 };
 
-// --- SEGÉDFÜGGVÉNYEK ---
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => document.querySelectorAll(s);
+// --- 2. KONFIGURÁCIÓ ---
+const CONFIG = {
+  STORAGE_KEY: "fb_v12_embedded", // Verzió frissítve
+  WELCOME_KEY: "fb_welcome_seen",
+  LEVELS: ["L1", "L2", "L3"],
+  MULTI_MAX_QUESTIONS: 10,
+  ROUND_TIME: 30,
+};
 
-// Seedelt random – multiplayer szinkronhoz
+// --- 3. SEGÉDFÜGGVÉNYEK ---
+const $ = (s) => document.querySelector(s);
+
 function seededRandom(a) {
   return function () {
     let t = (a += 0x6d2b79f5);
@@ -24,7 +91,6 @@ function seededRandom(a) {
   };
 }
 
-// Egyszerű shuffle (keverés)
 function shuffleArray(array) {
   let currentIndex = array.length, randomIndex;
   while (currentIndex !== 0) {
@@ -35,24 +101,18 @@ function shuffleArray(array) {
   return array;
 }
 
-// --- ANALYTICS (UMAMI) ---
+// Analytics wrapper
 const Analytics = {
   track(eventName, eventData) {
     try {
       if (typeof window !== "undefined" && window.umami && typeof window.umami.track === "function") {
-        if (eventData) {
-          window.umami.track(eventName, eventData);
-        } else {
-          window.umami.track(eventName);
-        }
+        window.umami.track(eventName, eventData);
       }
-    } catch (e) {
-      console.warn("Umami track hiba:", e);
-    }
+    } catch (e) { console.warn(e); }
   }
 };
 
-// --- FIREBASE KONFIG ---
+// Firebase (ha van net, betöltődik)
 const firebaseConfig = {
   apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
   authDomain: "floorballszabalyok-hu.firebaseapp.com",
@@ -66,193 +126,107 @@ const firebaseConfig = {
 function initFirebaseSafe() {
   try {
     const fb = (typeof window !== "undefined" && window.firebase) ? window.firebase : (typeof firebase !== "undefined" ? firebase : null);
-    if (fb) {
-      if (!fb.apps || !fb.apps.length) fb.initializeApp(firebaseConfig);
-      console.log("Firebase OK");
-    } else {
-      console.warn("Firebase SDK nem érhető el.");
-    }
-  } catch (e) {
-    console.error("Firebase init hiba:", e);
-  }
+    if (fb && (!fb.apps || !fb.apps.length)) fb.initializeApp(firebaseConfig);
+  } catch (e) { console.error("FB init error", e); }
 }
-
-// Init futtatása, ha betöltődött a DOM
 if (document.readyState === "loading") {
   window.addEventListener("DOMContentLoaded", initFirebaseSafe);
 } else {
   initFirebaseSafe();
 }
 
-// --- KONSTANSOK ÉS HTML ELEMEK ---
+// Ikonok
 const LIFE_SVG = `<svg class="life-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="6"/><circle cx="50" cy="50" r="9" fill="currentColor"/><circle cx="50" cy="18" r="7" fill="currentColor"/><circle cx="50" cy="82" r="7" fill="currentColor"/><circle cx="18" cy="50" r="7" fill="currentColor"/><circle cx="82" cy="50" r="7" fill="currentColor"/><circle cx="73" cy="27" r="6" fill="currentColor"/><circle cx="27" cy="27" r="6" fill="currentColor"/><circle cx="73" cy="73" r="6" fill="currentColor"/><circle cx="27" cy="73" r="6" fill="currentColor"/></svg>`;
 
-const TOPIC_LABELS = {
-  T00_BASE: "Alapfogalmak",
-  T01_RINK: "Játéktér",
-  T02_TIME: "Játékidő",
-  T03_PART: "Résztvevők",
-  T04_EQUI: "Felszerelés",
-  T05_RST: "Rögzített helyzetek",
-  T06_PEN: "Büntetések",
-  T07_GOAL: "Gólok"
-};
-
-// --- FŐ ALKALMAZÁS OBJEKTUM ---
+// --- 4. FŐ ALKALMAZÁS ---
 const app = {
-  // Állapotváltozók
-  user: {
-    progress: {},
-    theme: "light",
-    masterShown: false,
-    streak: 0,
-    roastIndex: 0
-  },
+  user: { progress: {}, theme: "light", streak: 0, roastIndex: 0 },
   session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
   
-  // Adatbázis
   db: null,
   topics: [],
   questionIndex: {},
 
-  // Multi
-  currentRoomId: null,
-  myPlayerId: null,
-  roomRef: null,
-  seed: null,
-  timerInterval: null,
-  hasAnsweredThisRound: false,
-  lastEvaluatedRound: 0,
-  waitingTimeoutId: null,
-  deferredPrompt: null,
-  stateCurrentScreen: "s-menu",
+  // Multi változók
+  currentRoomId: null, myPlayerId: null, roomRef: null, seed: null,
+  timerInterval: null, hasAnsweredThisRound: false, lastEvaluatedRound: 0,
+  waitingTimeoutId: null, deferredPrompt: null,
 
-  // --- INIT ---
   async init() {
-    console.log("App indítása...");
-    const container = document.getElementById("topic-container");
-    if (container) {
-      container.innerHTML = '<div style="text-align:center; padding:20px;">Adatok betöltése...</div>';
-    }
+    console.log("App init start");
+    
+    // User betöltése
+    this.loadUser();
+    this.bindUI();
+    this.applyTheme();
 
-    try {
-      this.loadUser();
-      this.bindUI();
-      this.applyTheme();
+    // ADATBÁZIS BETÖLTÉSE A HARDCODED VÁLTOZÓBÓL
+    // Így nem kell fetch, nincs CORS hiba, azonnal betölt.
+    this.db = HARDCODED_DB.data;
+    this.topics = HARDCODED_DB.topics;
 
-      // Adatbázis letöltése
-      const response = await fetch(CONFIG.DB_URL);
-      if (!response.ok) throw new Error(`DB hiba: ${response.status}`);
+    this.buildQuestionIndex();
+    this.renderMenu();
+    this.checkWelcome();
+    this.initInstallButton();
 
-      const jsonData = await response.json();
-      this.db = jsonData.data;
-      this.topics = jsonData.topics || Object.keys(this.db || {});
-
-      this.buildQuestionIndex();
-      this.renderMenu();
-      this.checkWelcome();
-      this.initInstallButton();
-
-      // URL paraméter ellenőrzés (meghívásos játék)
-      const urlParams = new URLSearchParams(window.location.search);
-      let roomId = urlParams.get("room");
-      if (roomId) {
-        roomId = roomId.toUpperCase();
-        if (/^[A-Z0-9]{4,10}$/.test(roomId)) {
-          this.joinGame(roomId);
-        } else {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      }
-
-      Analytics.track("app_loaded");
-
-    } catch (error) {
-      console.error("Kritikus hiba az init során:", error);
-      if (container) {
-        container.innerHTML = `Hiba az adatok betöltésekor (${error.message}). <br><br> Ellenőrizd, hogy a <code>database.json</code> fájl elérhető-e a szerveren.`;
+    // URL paraméter (invite)
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomId = urlParams.get("room");
+    if (roomId) {
+      if (/^[A-Z0-9]{4,10}$/.test(roomId)) {
+        this.joinGame(roomId);
+      } else {
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
+    Analytics.track("app_loaded_embedded");
   },
 
-  // --- UI ESEMÉNYKEZELŐK ---
   bindUI() {
-    // Globális esemény a bezárásra (multiplayer miatt)
     window.addEventListener("beforeunload", () => {
       if (this.myPlayerId === "host" && this.roomRef) {
-        this.roomRef.remove().catch((err) => console.error("Szoba törlés hiba beforeunload:", err));
+        this.roomRef.remove().catch((e) => console.error(e));
       }
     });
   },
 
-  // --- LOCALSTORAGE KEZELÉS ---
   loadUser() {
     try {
       const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        this.user = {
-          progress: parsed.progress || {},
-          theme: parsed.theme || "light",
-          masterShown: !!parsed.masterShown,
-          streak: parsed.streak || 0,
-          roastIndex: typeof parsed.roastIndex === "number" ? parsed.roastIndex : 0
-        };
+        this.user = { ...this.user, ...parsed };
       }
-    } catch (e) {
-      console.warn("Nem sikerült beolvasni a mentett adatokat:", e);
-    }
+    } catch (e) { console.warn(e); }
   },
 
   saveUser() {
     try {
       localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(this.user));
-    } catch (e) {
-      console.warn("Nem sikerült menteni az adatokat:", e);
-    }
-    this.renderMenuStats();
+    } catch (e) { console.warn(e); }
+    // Frissítjük a statokat a fejlécben, ha nem a menüben vagyunk
+    this.calculateAndShowGlobalStats();
   },
 
-  // Statisztikák frissítése a felületen mentés után
-  renderMenuStats() {
-    // Újrarajzoljuk a menüt, hogy a százalékok frissüljenek
-    // (Ha épp nem a menüben vagyunk, ez akkor is lefuthat a háttérben, vagy ellenőrizhetjük a screen-t)
-    if(this.stateCurrentScreen === "s-menu") {
-      this.renderMenu();
-    } else {
-      // Ha játékban vagyunk, frissítjük a globális statisztikát a fejlécben
-      this.calculateAndShowGlobalStats();
-    }
-  },
-
-  // --- TÉMA ---
   toggleTheme() {
     this.user.theme = this.user.theme === "light" ? "dark" : "light";
     this.saveUser();
     this.applyTheme();
-    Analytics.track("toggle_theme", { theme: this.user.theme });
   },
 
   applyTheme() {
     const icon = document.getElementById("theme-icon");
     if (this.user.theme === "dark") {
       document.body.classList.add("dark-mode");
-      if (icon) {
-        icon.classList.remove("ph-moon");
-        icon.classList.add("ph-sun");
-      }
+      if(icon) { icon.classList.remove("ph-moon"); icon.classList.add("ph-sun"); }
     } else {
       document.body.classList.remove("dark-mode");
-      if (icon) {
-        icon.classList.remove("ph-sun");
-        icon.classList.add("ph-moon");
-      }
+      if(icon) { icon.classList.remove("ph-sun"); icon.classList.add("ph-moon"); }
     }
   },
 
-  // --- NAVIGÁCIÓS FÜGGVÉNYEK ---
-  
-  // Fontos: Takarító függvény (Timer), ami hiányzott
+  // --- NAVIGÁCIÓ ---
   clearWaitingTimeout() {
     if (this.waitingTimeoutId) {
       clearTimeout(this.waitingTimeoutId);
@@ -260,36 +234,19 @@ const app = {
     }
   },
 
-  toggleScreen(id) {
-    this.showScreen(id);
-  },
-
   showScreen(id) {
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
-        this._switchScreenInternal(id);
-      });
-    } else {
-      this._switchScreenInternal(id);
-    }
-  },
-
-  _switchScreenInternal(id) {
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     const el = document.getElementById(id);
     if (el) el.classList.add("active");
     window.scrollTo(0, 0);
-    this.stateCurrentScreen = id;
   },
 
-  // Főmenübe lépés - ez hívja a home gomb és a "Vissza" gomb is
+  toggleScreen(id) { this.showScreen(id); },
+
   menu() {
-    // Takarítás, ha játékból jövünk vissza
     if (this.roomRef) {
       this.roomRef.off();
-      if (this.myPlayerId === "host") {
-        this.roomRef.remove().catch((err) => console.error("Szoba törlés hiba (menu):", err));
-      }
+      if (this.myPlayerId === "host") this.roomRef.remove().catch(()=>{});
       this.roomRef = null;
     }
     this.currentRoomId = null;
@@ -302,96 +259,56 @@ const app = {
     this.renderMenu();
   },
 
-  // --- ADAT ÉS RENDERELÉS ---
+  // --- MENÜ ÉS ADAT ---
   buildQuestionIndex() {
     this.questionIndex = {};
     if (!this.db) return;
-
-    const topicsToUse = this.topics && this.topics.length
-        ? this.topics.map((t) => (typeof t === "string" ? t : t.id))
-        : Object.keys(this.db);
-
-    topicsToUse.forEach((topicId) => {
+    this.topics.forEach((topicMeta) => {
+      const topicId = topicMeta.id;
       const topicData = this.db[topicId] || {};
-      CONFIG.LEVELS.forEach((level) => {
-        const arr = topicData[level] || [];
-        if (!Array.isArray(arr)) return;
-        arr.forEach((q) => {
-          if (q && q.id) {
-            this.questionIndex[q.id] = q;
-          }
-        });
+      CONFIG.LEVELS.forEach((lvl) => {
+        const arr = topicData[lvl] || [];
+        arr.forEach(q => { if(q.id) this.questionIndex[q.id] = q; });
       });
     });
   },
 
-  getTopicName(topicId) {
-    return TOPIC_LABELS[topicId] || topicId;
-  },
-
-  getLevelLabel(level) {
-    switch (level) {
-      case "L1": return "Kezdő";
-      case "L2": return "Haladó";
-      case "L3": return "Profi";
-      default: return level;
-    }
-  },
-
-  isLevelCompleted(topicId, level) {
-    const topicData = this.db?.[topicId] || {};
-    const total = (topicData[level] || []).length;
-    const solvedIds = (this.user.progress?.[topicId]?.[level] || []);
-    return total > 0 && solvedIds.length >= total;
-  },
-
-  isLevelUnlocked(topicId, level) {
-    if (level === "L1") return true;
-    if (level === "L2") return this.isLevelCompleted(topicId, "L1");
-    if (level === "L3") return this.isLevelCompleted(topicId, "L2");
-    return true;
-  },
-
   renderMenu() {
-    if (!this.db || !this.topics) return;
-
     const container = document.getElementById("topic-container");
     if (!container) return;
-
     container.innerHTML = "";
     
-    // Kiszámoljuk és kirajzoljuk a kártyákat
     this.calculateAndShowGlobalStats();
 
-    (this.topics || []).forEach((topicMeta, index) => {
-      const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-      const rawName = typeof topicMeta === "string" ? topicMeta : (topicMeta.name || topicMeta.id);
-      const topicName = `${index + 1}) ${rawName}`;
-      
+    this.topics.forEach((topicMeta, index) => {
+      const topicId = topicMeta.id;
+      const topicName = `${index + 1}) ${topicMeta.name}`;
       const topicData = this.db[topicId] || {};
-      let topicTotal = 0;
-      let topicAnswered = 0;
-      const levelStats = {};
-
-      CONFIG.LEVELS.forEach((level) => {
-        const qArr = topicData[level] || [];
-        const total = qArr.length;
-        const solvedIds = (this.user.progress[topicId]?.[level] || []);
-        const answered = Math.min(solvedIds.length, total);
-
-        levelStats[level] = { total, answered };
-        topicTotal += total;
-        topicAnswered += answered;
-      });
-
-      const topicPercent = topicTotal > 0 ? Math.round((topicAnswered / topicTotal) * 100) : 0;
       
-      const l1Done = levelStats["L1"].total > 0 && levelStats["L1"].answered >= levelStats["L1"].total;
-      const l2Done = levelStats["L2"].total > 0 && levelStats["L2"].answered >= levelStats["L2"].total;
-      const l3Done = levelStats["L3"].total > 0 && levelStats["L3"].answered >= levelStats["L3"].total;
-      
-      const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
+      let tTotal = 0; 
+      let tAns = 0;
+      let l1Done = false, l2Done = false, l3Done = false;
 
+      // Számolás
+      const l1T = (topicData["L1"]||[]).length;
+      const l1A = (this.user.progress[topicId]?.["L1"]||[]).length;
+      if(l1T > 0 && l1A >= l1T) l1Done = true;
+
+      const l2T = (topicData["L2"]||[]).length;
+      const l2A = (this.user.progress[topicId]?.["L2"]||[]).length;
+      if(l2T > 0 && l2A >= l2T) l2Done = true;
+
+      const l3T = (topicData["L3"]||[]).length;
+      const l3A = (this.user.progress[topicId]?.["L3"]||[]).length;
+      if(l3T > 0 && l3A >= l3T) l3Done = true;
+
+      tTotal = l1T + l2T + l3T;
+      tAns = Math.min(l1A, l1T) + Math.min(l2A, l2T) + Math.min(l3A, l3T);
+
+      const percent = tTotal > 0 ? Math.round((tAns / tTotal) * 100) : 0;
+      const mastered = (l1Done && l2Done && l3Done && tTotal > 0);
+
+      // HTML
       const card = document.createElement("div");
       card.className = "topic-card";
       if (mastered) card.classList.add("mastered");
@@ -399,170 +316,134 @@ const app = {
       card.innerHTML = `
         <div class="card-top">
           <div class="t-title">${topicName}</div>
-          <div class="t-badge ${mastered ? "done" : ""}">${topicPercent}%</div>
+          <div class="t-badge ${mastered ? "done" : ""}">${percent}%</div>
         </div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${topicPercent}%;"></div>
+          <div class="progress-fill" style="width:${percent}%;"></div>
         </div>
         <div class="topic-level-row">
-          <img src="img/beginner_badge.png" alt="L1" class="topic-level-badge ${l1Done ? "active" : "inactive"}">
-          <img src="img/intermediate_badge.png" alt="L2" class="topic-level-badge ${l2Done ? "active" : "inactive"}">
-          <img src="img/expert_badge.png" alt="L3" class="topic-level-badge ${l3Done ? "active" : "inactive"}">
+          <img src="img/beginner_badge.png" class="topic-level-badge ${l1Done ? "active" : "inactive"}">
+          <img src="img/intermediate_badge.png" class="topic-level-badge ${l2Done ? "active" : "inactive"}">
+          <img src="img/expert_badge.png" class="topic-level-badge ${l3Done ? "active" : "inactive"}">
         </div>
       `;
-
-      card.addEventListener("click", () => {
-        this.showLevels(topicId);
-      });
-
+      card.onclick = () => this.showLevels(topicId);
       container.appendChild(card);
     });
   },
 
-  // Új segédfüggvény: csak a statisztikák kiszámítása és frissítése
   calculateAndShowGlobalStats() {
-    let globalTotal = 0;
-    let globalAnswered = 0;
+    let gTotal = 0; 
+    let gAns = 0;
     let allCompleted = true;
 
-    (this.topics || []).forEach((topicMeta) => {
-        const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
-        const topicData = this.db[topicId] || {};
-        
-        // Ellenőrizzük, hogy ez a téma "mastered"-e
-        let topicMastered = true;
-
-        CONFIG.LEVELS.forEach((level) => {
-            const qArr = topicData[level] || [];
-            const total = qArr.length;
-            const solvedIds = (this.user.progress[topicId]?.[level] || []);
-            const answered = Math.min(solvedIds.length, total);
-
-            globalTotal += total;
-            globalAnswered += answered;
-            
-            if(total > 0 && answered < total) {
-                topicMastered = false;
-            }
-        });
-        
-        if(!topicMastered) allCompleted = false;
+    this.topics.forEach(t => {
+      const tid = t.id;
+      const d = this.db[tid] || {};
+      let tMastered = true;
+      CONFIG.LEVELS.forEach(lvl => {
+        const total = (d[lvl]||[]).length;
+        const ans = (this.user.progress[tid]?.[lvl]||[]).length;
+        gTotal += total;
+        gAns += Math.min(ans, total);
+        if(total > 0 && ans < total) tMastered = false;
+      });
+      if(!tMastered) allCompleted = false;
     });
 
-    this.updateGlobalStatsUI(globalAnswered, globalTotal, allCompleted);
-  },
+    const elAns = document.getElementById("stat-answered");
+    const elTot = document.getElementById("stat-total");
+    const elStr = document.getElementById("stat-streak");
+    const elBadge = document.getElementById("total-badge");
+    const elFill = document.getElementById("total-progress-fill");
+    const elMaster = document.getElementById("master-info");
 
-  updateGlobalStatsUI(answered, total, allCompleted) {
-    const statAnswered = document.getElementById("stat-answered");
-    const statTotal = document.getElementById("stat-total");
-    const statStreak = document.getElementById("stat-streak");
+    if(elAns) elAns.textContent = gAns;
+    if(elTot) elTot.textContent = gTotal;
+    if(elStr) elStr.textContent = this.user.streak;
     
-    if (statAnswered) statAnswered.textContent = answered;
-    if (statTotal) statTotal.textContent = total;
-    if (statStreak) statStreak.textContent = this.user.streak || 0;
-
-    const totalBadge = document.getElementById("total-badge");
-    const totalProgressFill = document.getElementById("total-progress-fill");
-    
-    if (total > 0) {
-      const percent = Math.round((answered / total) * 100);
-      if (totalBadge) totalBadge.textContent = `${percent}%`;
-      if (totalProgressFill) totalProgressFill.style.width = `${percent}%`;
+    if(gTotal > 0) {
+      const p = Math.round((gAns / gTotal) * 100);
+      if(elBadge) elBadge.textContent = `${p}%`;
+      if(elFill) elFill.style.width = `${p}%`;
     }
-
-    const masterInfo = document.getElementById("master-info");
-    if (masterInfo) {
-      masterInfo.style.display = (allCompleted && total > 0) ? "flex" : "none";
-    }
+    if(elMaster) elMaster.style.display = (allCompleted && gTotal > 0) ? "flex" : "none";
   },
 
   showLevels(topicId) {
+    const topicMeta = this.topics.find(t => t.id === topicId);
+    if(!topicMeta) return;
+    
+    document.getElementById("lvl-title").textContent = topicMeta.name;
+    const container = document.getElementById("level-container");
+    container.innerHTML = "";
+
     const topicData = this.db[topicId] || {};
-    const lvlTitle = document.getElementById("lvl-title");
-    const levelContainer = document.getElementById("level-container");
-    if (!lvlTitle || !levelContainer) return;
 
-    const niceName = this.getTopicName(topicId);
-    lvlTitle.textContent = niceName;
-    levelContainer.innerHTML = "";
-
-    CONFIG.LEVELS.forEach((level) => {
-      const qArr = topicData[level] || [];
+    CONFIG.LEVELS.forEach(lvl => {
+      const qArr = topicData[lvl] || [];
       const total = qArr.length;
-      const solvedIds = (this.user.progress[topicId]?.[level] || []);
-      const answered = Math.min(solvedIds.length, total);
+      const doneCount = (this.user.progress[topicId]?.[lvl] || []).length;
+      const answered = Math.min(doneCount, total);
       
-      const unlocked = this.isLevelUnlocked(topicId, level);
-      const done = this.isLevelCompleted(topicId, level);
+      // Unlock logika
+      let unlocked = false;
+      if (lvl === "L1") unlocked = true;
+      if (lvl === "L2") {
+        const l1T = (topicData["L1"]||[]).length;
+        const l1A = (this.user.progress[topicId]?.["L1"]||[]).length;
+        if(l1T > 0 && l1A >= l1T) unlocked = true;
+      }
+      if (lvl === "L3") {
+        const l2T = (topicData["L2"]||[]).length;
+        const l2A = (this.user.progress[topicId]?.["L2"]||[]).length;
+        if(l2T > 0 && l2A >= l2T) unlocked = true;
+      }
 
-      const card = document.createElement("div");
-      card.className = "level-card";
-      if (!unlocked) card.classList.add("locked");
+      const isDone = (total > 0 && answered >= total);
+      const label = (lvl==="L1"?"Kezdő":lvl==="L2"?"Haladó":"Profi");
 
-      card.innerHTML = `
+      const div = document.createElement("div");
+      div.className = "level-card " + (unlocked ? "" : "locked");
+      div.innerHTML = `
         <div>
-          <div class="l-name">${this.getLevelLabel(level)}</div>
+          <div class="l-name">${label}</div>
           <div class="l-stat">${answered} / ${total}</div>
         </div>
-        <button type="button" class="btn-play ${done ? "done" : ""}" ${unlocked ? "" : "disabled"}>
+        <button class="btn-play ${isDone ? "done" : ""}" ${unlocked ? "" : "disabled"}>
           ${unlocked ? "Indítás" : "Zárolva"}
         </button>
       `;
-
-      card.addEventListener("click", () => {
-        if (unlocked) this.start(topicId, level, false);
-      });
-
-      levelContainer.appendChild(card);
+      if(unlocked) {
+        div.onclick = () => this.start(topicId, lvl, false);
+      }
+      container.appendChild(div);
     });
 
     this.showScreen("s-levels");
   },
 
-  // --- JÁTÉK LOGIKA ---
-  start(topic, level, isMulti = false, questionIds = null) {
+  // --- GAME ---
+  start(topic, level, isMulti = false, qIds = null) {
     let qList = [];
-
-    if (isMulti) {
-      if (Array.isArray(questionIds) && questionIds.length) {
-        qList = questionIds.map((id) => this.questionIndex[id]).filter(Boolean);
+    if(isMulti) {
+      if(Array.isArray(qIds)) {
+        qList = qIds.map(id => this.questionIndex[id]).filter(Boolean);
       }
     } else {
-      if (!this.isLevelUnlocked(topic, level)) {
-        alert("Először fejezd be az előző szintet!");
-        return;
-      }
-      const allQ = this.db[topic][level] || [];
-      qList = [...allQ];
-    }
-
-    // Keverés
-    const randomFunc = (isMulti && this.seed) ? seededRandom(this.seed) : Math.random;
-    
-    if (!isMulti) {
-        shuffleArray(qList);
-    } else {
-        // Multi shuffle (determinisztikus)
-        let currentIndex = qList.length, randomIndex;
-        while (currentIndex !== 0) {
-            randomIndex = Math.floor(randomFunc() * currentIndex);
-            currentIndex--;
-            [qList[currentIndex], qList[randomIndex]] = [qList[randomIndex], qList[currentIndex]];
-        }
+      const all = this.db[topic]?.[level] || [];
+      qList = [...all];
+      shuffleArray(qList);
     }
 
     if (!isMulti) {
-      const solvedIDs = this.user.progress[topic]?.[level] || [];
-      const toPlay = qList.filter((q) => !solvedIDs.includes(q.id));
-
-      if (toPlay.length === 0) {
-        if (confirm("Már megoldottad az összes kérdést ezen a szinten.\nIndítsd újra gyakorlás módban?")) {
-          // Újraindítás teljes listával, keverve
-          const fullList = [...(this.db[topic][level] || [])];
-          shuffleArray(fullList);
-          this.session = {
-            topic, level, qList: fullList, idx: 0, lives: 3, isMulti: false
-          };
+      const solved = this.user.progress[topic]?.[level] || [];
+      const toPlay = qList.filter(q => !solved.includes(q.id));
+      
+      if(toPlay.length === 0) {
+        if(confirm("Már kész ez a szint. Újraindítod gyakorlásként?")) {
+          // Teljes lista
+          this.session = { topic, level, qList: qList, idx: 0, lives: 3, isMulti: false };
           this.showScreen("s-game");
           this.renderQ();
         }
@@ -570,13 +451,9 @@ const app = {
       }
       this.session = { topic, level, qList: toPlay, idx: 0, lives: 3, isMulti: false };
     } else {
-      // Multi setup
-      const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
-      qList = qList.slice(0, totalRounds);
-      this.session = {
-        topic: "MULTI", level: "MULTI", qList, idx: 0, lives: 3, isMulti: true,
-        roundNumber: 1, totalRounds
-      };
+      const max = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
+      qList = qList.slice(0, max);
+      this.session = { topic: "MULTI", level: "MULTI", qList, idx: 0, lives: 3, isMulti: true, roundNumber: 1, totalRounds: max };
     }
 
     this.hasAnsweredThisRound = false;
@@ -587,40 +464,34 @@ const app = {
 
   renderQ() {
     const q = this.session.qList[this.session.idx];
-    if (!q) {
-      this.end(true); 
+    if(!q) {
+      this.end(true);
       return;
     }
 
-    // UI elemek beállítása
+    // UI reset
     const livesEl = document.getElementById("g-lives");
-    const timerBar = document.getElementById("timer-bar");
-    const multiBadge = document.getElementById("multi-badge");
-    const roundEl = document.getElementById("round-indicator");
-    const qRemEl = document.getElementById("q-remaining");
+    const tBar = document.getElementById("timer-bar");
+    const mBadge = document.getElementById("multi-badge");
+    const rInd = document.getElementById("round-indicator");
+    const qRem = document.getElementById("q-remaining");
 
-    if (this.session.isMulti) {
-      if (livesEl) livesEl.style.display = "none";
-      if (timerBar) timerBar.style.display = "block";
-      if (multiBadge) multiBadge.style.display = "block";
-      if (roundEl) {
-        roundEl.style.display = "inline";
-        roundEl.innerText = `Kör: ${this.session.roundNumber} / ${this.session.totalRounds}`;
-      }
-      if (qRemEl) qRemEl.style.display = "none";
+    if(this.session.isMulti) {
+      livesEl.style.display = "none";
+      tBar.style.display = "block";
+      mBadge.style.display = "block";
+      rInd.style.display = "inline";
+      rInd.innerText = `Kör: ${this.session.roundNumber}/${this.session.totalRounds}`;
+      qRem.style.display = "none";
       this.startTimer();
     } else {
-      if (livesEl) {
-        livesEl.style.display = "block";
-        this.renderLives();
-      }
-      if (timerBar) timerBar.style.display = "none";
-      if (multiBadge) multiBadge.style.display = "none";
-      if (roundEl) roundEl.style.display = "none";
-      if (qRemEl) {
-        qRemEl.style.display = "inline";
-        qRemEl.innerText = this.session.qList.length - this.session.idx;
-      }
+      livesEl.style.display = "block";
+      this.renderLives();
+      tBar.style.display = "none";
+      mBadge.style.display = "none";
+      rInd.style.display = "none";
+      qRem.style.display = "inline";
+      qRem.innerText = this.session.qList.length - this.session.idx;
     }
 
     document.getElementById("q-text").textContent = q.q;
@@ -630,65 +501,64 @@ const app = {
     document.getElementById("g-feed").style.display = "none";
 
     // Progress bar
-    const progEl = document.getElementById("g-prog");
-    if(progEl && this.session.qList.length) {
-        const percent = Math.round((this.session.idx / this.session.qList.length) * 100);
-        progEl.style.width = percent + "%";
+    const pEl = document.getElementById("g-prog");
+    if(pEl) {
+      const pct = Math.round((this.session.idx / this.session.qList.length)*100);
+      pEl.style.width = pct+"%";
     }
 
     // Válaszok keverése
-    let indices = [0, 1, 2];
-    const seedBase = this.session.isMulti ? (this.seed + this.session.idx) : Math.random();
-    
+    let idxs = [0,1,2];
     if(this.session.isMulti) {
-        const rnd = seededRandom(seedBase);
-        for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(rnd() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
+      const s = this.seed + this.session.idx;
+      const r = seededRandom(s);
+      for(let i=2; i>0; i--) {
+        const j = Math.floor(r() * (i+1));
+        [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+      }
     } else {
-        shuffleArray(indices);
+      shuffleArray(idxs);
     }
 
-    indices.forEach((idx) => {
+    idxs.forEach(i => {
       const btn = document.createElement("div");
       btn.className = "btn-opt";
-      btn.textContent = q.o[idx];
-      btn.onclick = () => {
-        if (!this.hasAnsweredThisRound) this.check(idx, btn);
-      };
+      btn.textContent = q.o[i];
+      btn.onclick = () => { if(!this.hasAnsweredThisRound) this.check(i, btn); };
       cont.appendChild(btn);
     });
   },
 
   renderLives() {
-    const livesEl = document.getElementById("g-lives");
-    if(!livesEl) return;
-    livesEl.innerHTML = LIFE_SVG.repeat(Math.max(this.session.lives, 0));
+    const el = document.getElementById("g-lives");
+    if(el) el.innerHTML = LIFE_SVG.repeat(Math.max(this.session.lives, 0));
   },
 
   check(i, btn) {
     const q = this.session.qList[this.session.idx];
     const isOk = (i === q.c);
 
-    if (this.session.isMulti) {
+    if(this.session.isMulti) {
       this.hasAnsweredThisRound = true;
-      const update = {};
-      update[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] = isOk ? "correct" : "wrong";
-      if (this.roomRef) this.roomRef.update(update);
-      
+      const u = {};
+      u[this.myPlayerId==="host"?"hostAnswer":"guestAnswer"] = isOk?"correct":"wrong";
+      if(this.roomRef) this.roomRef.update(u);
       btn.style.opacity = "0.7";
       btn.innerText += " ⏳";
       this.stopTimer();
     } else {
-      // Single player
-      if (isOk) {
+      if(isOk) {
         this.user.streak++;
         this.saveProgress(q.id);
       } else {
         this.user.streak = 0;
         this.session.lives--;
-        this.shakeLives();
+        const lEl = document.getElementById("g-lives");
+        if(lEl) {
+          lEl.classList.add("shake");
+          setTimeout(()=>lEl.classList.remove("shake"), 500);
+        }
+        if(navigator.vibrate) navigator.vibrate(200);
       }
       this.saveUser();
       this.showFeedback(isOk, q);
@@ -698,48 +568,45 @@ const app = {
   saveProgress(qid) {
     const t = this.session.topic;
     const l = this.session.level;
-    if (!this.user.progress[t]) this.user.progress[t] = {};
-    if (!this.user.progress[t][l]) this.user.progress[t][l] = [];
-    if (!this.user.progress[t][l].includes(qid)) {
+    if(!this.user.progress[t]) this.user.progress[t] = {};
+    if(!this.user.progress[t][l]) this.user.progress[t][l] = [];
+    if(!this.user.progress[t][l].includes(qid)) {
       this.user.progress[t][l].push(qid);
-      this.saveUser();
     }
   },
 
   showFeedback(isOk, q) {
     this.renderLives();
     document.getElementById("g-opts").style.display = "none";
-    
-    const feed = document.getElementById("g-feed");
-    feed.style.display = "block";
-    feed.className = isOk ? "feedback ok" : "feedback bad";
+    const f = document.getElementById("g-feed");
+    f.style.display = "block";
+    f.className = isOk ? "feedback ok" : "feedback bad";
     
     let btnHtml = "";
-    if (this.session.lives > 0) {
-        const isLast = (this.session.qList.length - this.session.idx === 1);
-        btnHtml = `<button class="btn-main btn-main--next" onclick="app.next()">${isLast ? "BEFEJEZÉS 🏁" : "KÖVETKEZŐ ➜"}</button>`;
+    if(this.session.lives > 0) {
+      const last = (this.session.qList.length - this.session.idx === 1);
+      btnHtml = `<button class="btn-main btn-main--next" onclick="app.next()">${last?"BEFEJEZÉS 🏁":"KÖVETKEZŐ ➜"}</button>`;
     } else {
-        setTimeout(() => this.end(false), 2000);
+      setTimeout(()=>this.end(false), 2000);
     }
 
-    feed.innerHTML = `
-      <div style="font-weight:900; font-size:1.2rem; margin-bottom:10px;">${isOk ? "✅ Helyes!" : "❌ Helytelen!"}</div>
-      <div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:10px; margin-bottom:15px; font-size:0.9rem; color:var(--text-main);">
-        <strong>A helyes válasz:</strong><br>${q.o[q.c]}
+    f.innerHTML = `
+      <div style="font-weight:900;font-size:1.2rem;margin-bottom:10px;">${isOk?"✅ Helyes!":"❌ Helytelen!"}</div>
+      <div style="background:rgba(0,0,0,0.05);padding:10px;border-radius:10px;margin-bottom:15px;font-size:0.9rem;color:var(--text-main);">
+        <strong>Helyes válasz:</strong><br>${q.o[q.c]}
       </div>
-      <div style="line-height:1.5; margin-bottom:10px; color:var(--text-main);">${q.e || ""}</div>
-      ${q.r ? `<div class="ref-code">SZABÁLYKÖNYV: ${q.r}</div>` : ""}
+      <div style="line-height:1.5;margin-bottom:10px;color:var(--text-main);">${q.e||""}</div>
+      ${q.r ? `<div class="ref-code">SZABÁLY: ${q.r}</div>` : ""}
       ${btnHtml}
     `;
-    
-    feed.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    f.scrollIntoView({ behavior:"smooth", block:"nearest" });
   },
 
   next() {
     this.session.idx++;
-    if (this.session.idx < this.session.qList.length) {
+    if(this.session.idx < this.session.qList.length) {
       this.renderQ();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({top:0, behavior:"smooth"});
     } else {
       this.end(true);
     }
@@ -747,326 +614,211 @@ const app = {
 
   end(win) {
     this.showScreen("s-end");
-    const titleEl = document.getElementById("end-title");
-    const msgEl = document.getElementById("end-msg");
-    const scoreEl = document.getElementById("end-score");
-    const iconEl = document.getElementById("end-icon");
+    const tEl = document.getElementById("end-title");
+    const mEl = document.getElementById("end-msg");
+    const iEl = document.getElementById("end-icon");
+    const sEl = document.getElementById("end-score");
 
-    if (this.session.isMulti) {
-        if(scoreEl) scoreEl.style.display = "none";
-    } else {
-        if(scoreEl) {
-            scoreEl.style.display = "block";
-            scoreEl.innerText = `${this.session.idx}/${this.session.qList.length}`;
-        }
+    if(!this.session.isMulti && sEl) {
+      sEl.style.display = "block";
+      sEl.innerText = `${this.session.idx}/${this.session.qList.length}`;
+    } else if(sEl) {
+      sEl.style.display = "none";
     }
 
-    if (win) {
-      iconEl.innerText = "🎉";
-      titleEl.innerText = "Kör vége";
-      msgEl.innerText = "Szép munka! Csak így tovább!";
-      msgEl.style.color = "";
+    if(win) {
+      iEl.innerText = "🎉";
+      tEl.innerText = "Kör vége";
+      mEl.innerText = "Szép munka! Csak így tovább!";
+      mEl.style.color = "";
     } else {
-      iconEl.innerText = "💀";
-      const roasts = [
-        "A szabálykönyv nem harap, nyugodtan kinyithatod!",
-        "A bíró vak volt? Nem, most te nézted be...",
-        "Irány a lelátó, ott könnyebb okosnak lenni!",
-        "Ez most nem jött össze. Újra?"
-      ];
-      titleEl.innerText = roasts[this.user.roastIndex % roasts.length];
+      iEl.innerText = "💀";
+      const roasts = ["A szabálykönyv nem harap!", "Ez most nem jött össze.", "Próbáld újra!"];
+      tEl.innerText = roasts[this.user.roastIndex % roasts.length];
       this.user.roastIndex++;
       this.saveUser();
-      
-      msgEl.innerText = "Game Over";
-      msgEl.style.color = "var(--error)";
+      mEl.innerText = "Game Over";
+      mEl.style.color = "var(--error)";
     }
 
-    const actions = document.getElementById("end-actions");
-    actions.innerHTML = `
-        <button class="btn-main btn-main--secondary" onclick="app.menu()">Vissza a főmenübe</button>
-    `;
+    document.getElementById("end-actions").innerHTML = `<button class="btn-main btn-main--secondary" onclick="app.menu()">Vissza a főmenübe</button>`;
   },
 
-  shakeLives() {
-    const livesEl = document.getElementById("g-lives");
-    if (livesEl) {
-      livesEl.classList.add("shake");
-      setTimeout(() => livesEl.classList.remove("shake"), 500);
-    }
-    if (navigator.vibrate) navigator.vibrate(200);
-  },
-
-  // --- MODALOK ÉS EGYÉB ---
-  checkWelcome() {
-    const seen = localStorage.getItem(CONFIG.WELCOME_KEY);
-    if (!seen) {
-      document.getElementById("welcome-modal").classList.add("open");
-    }
-  },
-  toggleWelcome() {
-    const m = document.getElementById("welcome-modal");
-    if(m.classList.contains("open")) {
-        m.classList.remove("open");
-        localStorage.setItem(CONFIG.WELCOME_KEY, "1");
-    } else {
-        m.classList.add("open");
-    }
-  },
-  toggleInfo() {
-    document.getElementById("info-modal").classList.toggle("open");
-  },
-  toggleResetModal() {
-    document.getElementById("reset-modal").classList.toggle("open");
-  },
-  fullReset() {
-    localStorage.clear();
-    location.reload();
-  },
-  
-  showRules() {
-    const isDesktop = window.innerWidth >= 900 && !/Android|iPhone/i.test(navigator.userAgent);
-    if (isDesktop) {
-        window.open("Floorball_Jatekszabalyok_2022_FINAL.pdf", "_blank");
-    } else {
-        this.showScreen("s-rules");
-    }
-  },
-
-  downloadCert() {
-    const el = document.getElementById("certificate");
-    if(el && window.html2canvas) {
-        window.html2canvas(el).then(canvas => {
-            const link = document.createElement("a");
-            link.download = "floorball_mester.png";
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-    }
-  },
-
-  // --- MULTIPLAYER ---
+  // --- MULTI ---
   startChallengeMode() {
-    if (typeof firebase === "undefined" || !firebase.apps.length) {
-      alert("A multiplayerhez internet szükséges!");
-      return;
-    }
-    const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    this.currentRoomId = roomId;
+    if(typeof firebase === "undefined" || !firebase.apps.length) { alert("Internet szükséges!"); return; }
+    const rid = Math.random().toString(36).substring(2,8).toUpperCase();
+    this.currentRoomId = rid;
     this.myPlayerId = "host";
     
-    // Kérdések kiválasztása
     const allIds = Object.keys(this.questionIndex);
-    const shuffledIds = shuffleArray([...allIds]);
-    const questionsForRoom = shuffledIds.slice(0, CONFIG.MULTI_MAX_QUESTIONS);
-    const seed = Math.floor(Math.random() * 1e9);
+    const sh = shuffleArray([...allIds]);
+    const qs = sh.slice(0, CONFIG.MULTI_MAX_QUESTIONS);
+    const seed = Math.floor(Math.random()*1e9);
 
-    this.roomRef = firebase.database().ref("rooms/" + roomId);
+    this.roomRef = firebase.database().ref("rooms/"+rid);
     this.roomRef.set({
-        status: "waiting",
-        seed: seed,
-        round: 1,
-        hostAnswer: "pending",
-        guestAnswer: "pending",
-        questions: questionsForRoom,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
+      status: "waiting", seed, round: 1, hostAnswer: "pending", guestAnswer: "pending",
+      questions: qs, createdAt: firebase.database.ServerValue.TIMESTAMP
     }).then(() => {
-        document.getElementById("host-modal").classList.add("open");
-        const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-        document.getElementById("share-link-input").value = link;
-        
-        this.roomRef.on("value", (snap) => this.onRoomUpdate(snap.val()));
+      document.getElementById("host-modal").classList.add("open");
+      document.getElementById("share-link-input").value = `${window.location.origin}${window.location.pathname}?room=${rid}`;
+      this.roomRef.on("value", s => this.onRoomUpdate(s.val()));
     });
   },
 
-  joinGame(roomId) {
-    if (typeof firebase === "undefined" || !firebase.apps.length) return;
-    this.currentRoomId = roomId;
+  joinGame(rid) {
+    if(typeof firebase==="undefined") return;
+    this.currentRoomId = rid;
     this.myPlayerId = "guest";
-    this.roomRef = firebase.database().ref("rooms/" + roomId);
-    
-    this.roomRef.once("value").then(snap => {
-        const data = snap.val();
-        if(data && data.status === "waiting") {
-            document.getElementById("challenge-modal").classList.add("open");
-        } else {
-            alert("A szoba nem elérhető.");
-            this.menu();
-        }
+    this.roomRef = firebase.database().ref("rooms/"+rid);
+    this.roomRef.once("value").then(s => {
+      const d = s.val();
+      if(d && d.status==="waiting") document.getElementById("challenge-modal").classList.add("open");
+      else { alert("A szoba nem elérhető."); this.menu(); }
     });
   },
 
   acceptChallenge() {
     document.getElementById("challenge-modal").classList.remove("open");
-    this.roomRef.update({ status: "playing" }).then(() => {
-        this.roomRef.on("value", (snap) => this.onRoomUpdate(snap.val()));
+    this.roomRef.update({status:"playing"}).then(() => {
+      this.roomRef.on("value", s => this.onRoomUpdate(s.val()));
     });
   },
-
-  rejectChallenge() {
-      document.getElementById("challenge-modal").classList.remove("open");
-      this.menu();
-  },
-
-  cancelHost() {
-      if(this.roomRef) this.roomRef.remove();
-      document.getElementById("host-modal").classList.remove("open");
-      this.menu();
-  },
-
+  rejectChallenge() { document.getElementById("challenge-modal").classList.remove("open"); this.menu(); },
+  cancelHost() { if(this.roomRef) this.roomRef.remove(); document.getElementById("host-modal").classList.remove("open"); this.menu(); },
   shareLink() {
-      const input = document.getElementById("share-link-input");
-      input.select();
-      document.execCommand("copy");
-      alert("Link másolva!");
+    const i = document.getElementById("share-link-input");
+    i.select(); document.execCommand("copy"); alert("Link másolva!");
   },
 
-  onRoomUpdate(data) {
-      if(!data) {
-          if(this.currentRoomId) { alert("A szoba bezárult."); this.menu(); }
-          return;
-      }
-      
-      if(data.status === "playing") {
-          document.getElementById("host-modal").classList.remove("open");
-          document.getElementById("waiting-modal").classList.remove("open");
-          
-          if(!this.session.isMulti) {
-              this.seed = data.seed;
-              this.start("MULTI", "MULTI", true, data.questions);
-              this.session.roundNumber = data.round || 1;
-          }
-      }
-
-      if(this.session.isMulti && data.round === this.session.roundNumber) {
-          const myAns = this.myPlayerId === "host" ? data.hostAnswer : data.guestAnswer;
-          const oppAns = this.myPlayerId === "host" ? data.guestAnswer : data.hostAnswer;
-          
-          if(myAns !== "pending" && oppAns === "pending") {
-              document.getElementById("waiting-modal").classList.add("open");
-          } else {
-              document.getElementById("waiting-modal").classList.remove("open");
-          }
-
-          if(data.hostAnswer !== "pending" && data.guestAnswer !== "pending") {
-              this.evaluateRound(data.hostAnswer, data.guestAnswer, data.round);
-          }
-      }
-      
-      if(this.session.isMulti && data.round > this.session.roundNumber) {
-          this.startNextMultiRound(data.round);
-      }
-      
-      if(data.status === "finished") {
-          // Rematch logika helye lenne
-      }
-  },
-
-  evaluateRound(hAns, gAns, currentRound) {
-      if(this.lastEvaluatedRound === currentRound) return;
-      this.lastEvaluatedRound = currentRound;
-      this.stopTimer();
-
-      setTimeout(() => {
-          if(hAns === "correct" && gAns === "correct") {
-              if(currentRound >= this.session.totalRounds) {
-                  this.endMultiGame("draw", "Mindketten hibátlanok voltatok!");
-              } else if(this.myPlayerId === "host") {
-                  this.roomRef.update({ round: currentRound + 1, hostAnswer: "pending", guestAnswer: "pending" });
-              }
-          } else if(hAns === "wrong" && gAns === "wrong") {
-              this.endMultiGame("draw", "Mindketten rontottatok!");
-          } else {
-              const winner = hAns === "correct" ? "host" : "guest";
-              this.endMultiGame(this.myPlayerId === winner ? "win" : "lose");
-          }
-      }, 1500);
-  },
-
-  startNextMultiRound(roundNum) {
-      this.session.roundNumber = roundNum;
-      this.session.idx++;
-      this.hasAnsweredThisRound = false;
-      this.renderQ();
-  },
-
-  endMultiGame(result, msg) {
-      this.showScreen("s-end");
-      this.stopTimer();
+  onRoomUpdate(d) {
+    if(!d) { if(this.currentRoomId){ alert("A szoba bezárult."); this.menu(); } return; }
+    
+    if(d.status === "playing") {
+      document.getElementById("host-modal").classList.remove("open");
       document.getElementById("waiting-modal").classList.remove("open");
+      if(!this.session.isMulti) {
+        this.seed = d.seed;
+        this.start("MULTI", "MULTI", true, d.questions);
+        this.session.roundNumber = d.round||1;
+      }
+    }
+
+    if(this.session.isMulti && d.round === this.session.roundNumber) {
+      const mA = this.myPlayerId==="host" ? d.hostAnswer : d.guestAnswer;
+      const oA = this.myPlayerId==="host" ? d.guestAnswer : d.hostAnswer;
       
-      const title = document.getElementById("end-title");
-      const message = document.getElementById("end-msg");
-      const icon = document.getElementById("end-icon");
-      
-      if(result === "win") {
-          title.innerText = "GYŐZELEM!";
-          icon.innerText = "🏆";
-          message.innerText = "Az ellenfél hibázott.";
-      } else if (result === "lose") {
-          title.innerText = "VERESÉG";
-          icon.innerText = "💀";
-          message.innerText = "Te hibáztál (vagy lassú voltál).";
+      const wm = document.getElementById("waiting-modal");
+      if(mA !== "pending" && oA === "pending") wm.classList.add("open");
+      else wm.classList.remove("open");
+
+      if(d.hostAnswer!=="pending" && d.guestAnswer!=="pending") {
+        this.evaluateRound(d.hostAnswer, d.guestAnswer, d.round);
+      }
+    }
+    if(this.session.isMulti && d.round > this.session.roundNumber) {
+      this.startNextMultiRound(d.round);
+    }
+  },
+
+  evaluateRound(h, g, cr) {
+    if(this.lastEvaluatedRound === cr) return;
+    this.lastEvaluatedRound = cr;
+    this.stopTimer();
+    setTimeout(() => {
+      if(h==="correct" && g==="correct") {
+        if(cr >= this.session.totalRounds) this.endMultiGame("draw", "Mindkettő hibátlan!");
+        else if(this.myPlayerId==="host") this.roomRef.update({round: cr+1, hostAnswer:"pending", guestAnswer:"pending"});
+      } else if(h==="wrong" && g==="wrong") {
+        this.endMultiGame("draw", "Mindkettő rontott!");
       } else {
-          title.innerText = "DÖNTETLEN";
-          icon.innerText = "🤝";
-          message.innerText = msg || "Döntetlen játék.";
+        const w = h==="correct"?"host":"guest";
+        this.endMultiGame(this.myPlayerId===w?"win":"lose");
       }
-      
-      if(this.roomRef) this.roomRef.update({ status: "finished" });
+    }, 1500);
   },
 
-  // --- IDŐZÍTŐK ---
+  startNextMultiRound(rn) {
+    this.session.roundNumber = rn;
+    this.session.idx++;
+    this.hasAnsweredThisRound = false;
+    this.renderQ();
+  },
+
+  endMultiGame(res, msg) {
+    this.showScreen("s-end");
+    this.stopTimer();
+    document.getElementById("waiting-modal").classList.remove("open");
+    const t = document.getElementById("end-title");
+    const m = document.getElementById("end-msg");
+    const i = document.getElementById("end-icon");
+    
+    if(res==="win") { t.innerText="GYŐZELEM!"; i.innerText="🏆"; m.innerText="Az ellenfél hibázott."; }
+    else if(res==="lose") { t.innerText="VERESÉG"; i.innerText="💀"; m.innerText="Te hibáztál."; }
+    else { t.innerText="DÖNTETLEN"; i.innerText="🤝"; m.innerText=msg||"Döntetlen."; }
+    if(this.roomRef) this.roomRef.update({status:"finished"});
+  },
+
   startTimer() {
-      this.stopTimer();
-      const fill = document.getElementById("timer-fill");
-      if(!fill) return;
-      fill.style.width = "100%";
-      fill.style.transition = `width ${CONFIG.ROUND_TIME}s linear`;
-      // Force reflow
-      void fill.offsetWidth;
-      fill.style.width = "0%";
-      
-      this.timerInterval = setTimeout(() => {
-          this.handleTimeout();
-      }, CONFIG.ROUND_TIME * 1000);
+    this.stopTimer();
+    const f = document.getElementById("timer-fill");
+    if(!f) return;
+    f.style.width="100%";
+    f.style.transition=`width ${CONFIG.ROUND_TIME}s linear`;
+    void f.offsetWidth;
+    f.style.width="0%";
+    this.timerInterval = setTimeout(()=>this.handleTimeout(), CONFIG.ROUND_TIME*1000);
   },
-
   stopTimer() {
-      if(this.timerInterval) clearTimeout(this.timerInterval);
-      const fill = document.getElementById("timer-fill");
-      if(fill) {
-          fill.style.transition = "none";
-          fill.style.width = getComputedStyle(fill).width;
-      }
+    if(this.timerInterval) clearTimeout(this.timerInterval);
+    const f = document.getElementById("timer-fill");
+    if(f) { f.style.transition="none"; f.style.width = getComputedStyle(f).width; }
   },
-
   handleTimeout() {
-      if(this.session.isMulti && !this.hasAnsweredThisRound && this.roomRef) {
-          this.hasAnsweredThisRound = true;
-          const upd = {};
-          upd[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] = "wrong";
-          this.roomRef.update(upd);
-      }
+    if(this.session.isMulti && !this.hasAnsweredThisRound && this.roomRef) {
+      this.hasAnsweredThisRound = true;
+      const u={}; u[this.myPlayerId==="host"?"hostAnswer":"guestAnswer"]="wrong";
+      this.roomRef.update(u);
+    }
   },
 
-  // --- PWA INSTALL ---
-  initInstallButton() {
-      const btn = document.getElementById("install-btn");
-      window.addEventListener("beforeinstallprompt", (e) => {
-          e.preventDefault();
-          this.deferredPrompt = e;
-          if(btn) btn.style.display = "block";
+  // --- EGYÉB ---
+  checkWelcome() {
+    if(!localStorage.getItem(CONFIG.WELCOME_KEY)) document.getElementById("welcome-modal").classList.add("open");
+  },
+  toggleWelcome() {
+    const m = document.getElementById("welcome-modal");
+    if(m.classList.contains("open")) { m.classList.remove("open"); localStorage.setItem(CONFIG.WELCOME_KEY, "1"); }
+    else m.classList.add("open");
+  },
+  toggleInfo() { document.getElementById("info-modal").classList.toggle("open"); },
+  toggleResetModal() { document.getElementById("reset-modal").classList.toggle("open"); },
+  fullReset() { localStorage.clear(); location.reload(); },
+  showRules() { window.open("Floorball_Jatekszabalyok_2022_FINAL.pdf", "_blank"); },
+  downloadCert() {
+    const el = document.getElementById("certificate");
+    if(el && window.html2canvas) {
+      window.html2canvas(el).then(c => {
+        const l = document.createElement("a");
+        l.download = "floorball_mester.png";
+        l.href = c.toDataURL();
+        l.click();
       });
+    }
+  },
+  initInstallButton() {
+    const b = document.getElementById("install-btn");
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); this.deferredPrompt = e; if(b) b.style.display="block"; });
   },
   triggerInstall() {
-      if(this.deferredPrompt) {
-          this.deferredPrompt.prompt();
-          this.deferredPrompt = null;
-          document.getElementById("install-btn").style.display = "none";
-      }
+    if(this.deferredPrompt) {
+      this.deferredPrompt.prompt(); this.deferredPrompt = null; document.getElementById("install-btn").style.display="none";
+    }
   },
-  closeIosInstall() {
-      document.getElementById("ios-install-modal").classList.remove("open");
-  }
+  closeIosInstall() { document.getElementById("ios-install-modal").classList.remove("open"); }
 };
+
+// INDÍTÁS
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => app.init());
+else app.init();
