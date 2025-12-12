@@ -2,8 +2,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
   authDomain: "floorballszabalyok-hu.firebaseapp.com",
-  databaseURL:
-    "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app",
+  databaseURL: "https://floorballszabalyok-hu-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "floorballszabalyok-hu",
   storageBucket: "floorballszabalyok-hu.appspot.com",
   messagingSenderId: "171694131350",
@@ -16,11 +15,9 @@ const firebaseConfig = {
 function initFirebaseSafe() {
   try {
     const fb =
-      typeof window !== "undefined" && window.firebase
+      (typeof window !== "undefined" && window.firebase)
         ? window.firebase
-        : typeof firebase !== "undefined"
-        ? firebase
-        : null;
+        : (typeof firebase !== "undefined" ? firebase : null);
 
     if (fb) {
       if (!fb.apps || !fb.apps.length) {
@@ -54,6 +51,21 @@ const CONFIG = {
   MULTI_MAX_QUESTIONS: 10,
   ROUND_TIME: 30 // másodperc / kör a multiplayerben
 };
+
+// --- UMAMI ANALYTICS HELPER ---
+
+function trackEvent(eventName, data = {}) {
+  try {
+    const hasData = data && Object.keys(data).length > 0;
+    if (typeof window !== "undefined" && window.umami && typeof window.umami.track === "function") {
+      window.umami.track(eventName, hasData ? data : undefined);
+    } else if (typeof umami !== "undefined" && typeof umami.track === "function") {
+      umami.track(eventName, hasData ? data : undefined);
+    }
+  } catch (e) {
+    console.warn("Umami track hiba:", e);
+  }
+}
 
 const LIFE_SVG = `
 <svg class="life-icon" viewBox="0 0 100 100" fill="none"
@@ -92,27 +104,7 @@ function seededRandom(a) {
   };
 }
 
-// --- UMAMI HELPER ---
-function trackEvent(eventName, data) {
-  try {
-    if (
-      typeof window !== "undefined" &&
-      window.umami &&
-      typeof window.umami.track === "function"
-    ) {
-      if (data && typeof data === "object") {
-        window.umami.track(eventName, data);
-      } else {
-        window.umami.track(eventName);
-      }
-    }
-  } catch (e) {
-    console.warn("Umami track hiba:", e);
-  }
-}
-
 const app = {
-  // Felhasználói állapot (localStorage)
   user: {
     progress: {},
     theme: "light",
@@ -121,17 +113,7 @@ const app = {
     roastIndex: 0 // következő roast sorszáma
   },
 
-  // Játék session state
-  session: {
-    topic: null,
-    level: null,
-    qList: [],
-    idx: 0,
-    lives: 3,
-    isMulti: false,
-    sessionId: null,
-    answeredCount: 0
-  },
+  session: { topic: null, level: null, qList: [], idx: 0, lives: 3 },
 
   // Multi / adatbázis változók
   db: null,
@@ -146,6 +128,13 @@ const app = {
   lastEvaluatedRound: 0,
   waitingTimeoutId: null,
   deferredPrompt: null,
+
+  // Rematch / multi state
+  lastRoomData: null,
+  _rematchPromptShown: false,
+  _rematchNotifiedAccepted: false,
+  _rematchNotifiedRejected: false,
+  _currentMatchId: 0,
 
   // --- INIT ---
   async init() {
@@ -169,6 +158,8 @@ const app = {
       this.renderMenu();
       this.checkWelcome();
       this.initInstallButton();
+
+      trackEvent("app_init");
 
       // Globális takarító listener (ha host zárja be)
       window.addEventListener("beforeunload", () => {
@@ -395,7 +386,9 @@ const app = {
       totalAnswered += topicAnswered;
 
       const topicPercent =
-        topicTotal > 0 ? Math.round((topicAnswered / topicTotal) * 100) : 0;
+        topicTotal > 0
+          ? Math.round((topicAnswered / topicTotal) * 100)
+          : 0;
 
       const l1Done =
         levelStats["L1"].total > 0 &&
@@ -415,30 +408,30 @@ const app = {
       if (mastered) card.classList.add("mastered");
 
       card.innerHTML = `
-        <div class="card-top">
-          <div class="t-title">${topicName}</div>
-          <div class="t-badge ${mastered ? "done" : ""}">
-            ${topicPercent}%
+          <div class="card-top">
+            <div class="t-title">${topicName}</div>
+            <div class="t-badge ${mastered ? "done" : ""}">
+              ${topicPercent}%
+            </div>
           </div>
-        </div>
 
-        <div class="progress-track">
-          <div class="progress-fill" style="width:${topicPercent}%;"></div>
-        </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${topicPercent}%;"></div>
+          </div>
 
-        <div class="topic-level-row">
-          <img src="img/beginner_badge.png" alt="L1 szint"
-               class="topic-level-badge ${l1Done ? "active" : "inactive"}">
-          <img src="img/intermediate_badge.png" alt="L2 szint"
-               class="topic-level-badge ${l2Done ? "active" : "inactive"}">
-          <img src="img/expert_badge.png" alt="L3 szint"
-               class="topic-level-badge ${l3Done ? "active" : "inactive"}">
-        </div>
-      `;
+          <div class="topic-level-row">
+            <img src="img/beginner_badge.png" alt="L1 szint"
+                 class="topic-level-badge ${l1Done ? "active" : "inactive"}">
+            <img src="img/intermediate_badge.png" alt="L2 szint"
+                 class="topic-level-badge ${l2Done ? "active" : "inactive"}">
+            <img src="img/expert_badge.png" alt="L3 szint"
+                 class="topic-level-badge ${l3Done ? "active" : "inactive"}">
+          </div>
+        `;
 
       // teljes kártya kattintható → szintválasztó + analitika
       card.addEventListener("click", () => {
-        trackEvent("open_topic", { topicId, name: rawName });
+        trackEvent("topic_open", { topicId, topicName: rawName });
         this.showLevels(topicId);
       });
 
@@ -564,9 +557,7 @@ const app = {
 
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
-      alert(
-        "A multiplayerhez internet és érvényes Firebase beállítás szükséges!"
-      );
+      alert("A multiplayerhez internet és érvényes Firebase beállítás szükséges!");
       return;
     }
     if (!this.db || !Object.keys(this.questionIndex).length) {
@@ -593,7 +584,10 @@ const app = {
 
     // Keverés
     const shuffledIds = this.shuffle([...allQuestionIds]);
-    const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, shuffledIds.length);
+    const totalRounds = Math.min(
+      CONFIG.MULTI_MAX_QUESTIONS,
+      shuffledIds.length
+    );
     const questionsForRoom = shuffledIds.slice(0, totalRounds);
 
     // Seed (a válaszlehetőségek sorrendjéhez)
@@ -606,6 +600,12 @@ const app = {
       hostAnswer: "pending",
       guestAnswer: "pending",
       questions: questionsForRoom,
+      matchId: 1,
+      rematch: {
+        status: "none",
+        requestedBy: null,
+        respondedBy: null
+      },
       createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
@@ -618,6 +618,11 @@ const app = {
         const link = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
         const input = document.getElementById("share-link-input");
         if (input) input.value = link;
+
+        trackEvent("multi_room_created", {
+          roomId,
+          totalRounds
+        });
 
         this.roomRef.on("value", (snapshot) =>
           this.onRoomUpdate(snapshot.val())
@@ -709,6 +714,8 @@ const app = {
   },
 
   onRoomUpdate(data) {
+    this.lastRoomData = data || null;
+
     if (!data) {
       if (this.currentRoomId) {
         alert("A kapcsolat megszakadt, a szoba bezárult.");
@@ -718,13 +725,56 @@ const app = {
       return;
     }
 
+    const rematch = data.rematch || null;
+
+    // Rematch prompt reset
+    if (!rematch || rematch.status !== "requested") {
+      this._rematchPromptShown = false;
+    }
+
+    // Ha engem kérnek új párbajra
+    if (
+      rematch &&
+      rematch.status === "requested" &&
+      rematch.requestedBy &&
+      rematch.requestedBy !== this.myPlayerId &&
+      !this._rematchPromptShown
+    ) {
+      this._rematchPromptShown = true;
+      const accept = confirm("Az ellenfeled új párbajt szeretne. Elfogadod?");
+      if (accept) {
+        this.acceptRematch();
+      } else {
+        this.rejectRematch();
+      }
+    }
+
+    // Ha én kértem, értesítés az eredményről
+    if (rematch && rematch.requestedBy === this.myPlayerId) {
+      if (rematch.status === "accepted" && !this._rematchNotifiedAccepted) {
+        this._rematchNotifiedAccepted = true;
+        alert("Az ellenfeled elfogadta az új párbajt. Indul az új meccs!");
+      }
+      if (rematch.status === "rejected" && !this._rematchNotifiedRejected) {
+        this._rematchNotifiedRejected = true;
+        alert(
+          "Másik játékos elutasította az új párbajt, menj vissza gyakorolni!"
+        );
+      }
+    } else {
+      this._rematchNotifiedAccepted = false;
+      this._rematchNotifiedRejected = false;
+    }
+
     // Játék indítása
     if (data.status === "playing") {
       const hostModal = document.getElementById("host-modal");
       if (hostModal && hostModal.classList.contains("open")) {
         hostModal.classList.remove("open");
       }
-      if (!this.session.isMulti) {
+
+      const matchId = data.matchId || 1;
+      if (this._currentMatchId !== matchId) {
         this.startGameFromRoom(data);
       }
     }
@@ -789,6 +839,7 @@ const app = {
 
     this.start("MULTI", "MULTI", true, questionIds);
     this.session.roundNumber = roomData.round || 1;
+    this._currentMatchId = roomData.matchId || 1;
   },
 
   evaluateRound(hAns, gAns, currentRound) {
@@ -871,7 +922,7 @@ const app = {
       if (iconEl) iconEl.innerText = "🤝";
     }
 
-    // Gombok: Új párbaj + Vissza a főmenübe
+    // Gombok: Új párbaj ugyanazzal + Vissza a főmenübe
     const actions = document.getElementById("end-actions");
     if (actions) {
       actions.innerHTML = "";
@@ -879,7 +930,7 @@ const app = {
       const btnRematch = document.createElement("button");
       btnRematch.className = "btn-main";
       btnRematch.innerText = "Új párbaj indítása";
-      btnRematch.onclick = () => this.startChallengeMode();
+      btnRematch.onclick = () => this.requestRematch();
       actions.appendChild(btnRematch);
 
       const btnMenu = document.createElement("button");
@@ -897,32 +948,127 @@ const app = {
       }, 150);
     }
 
-    // Szoba lezárása / takarítás
-    if (this.roomRef) {
-      this.roomRef.off();
-      if (this.myPlayerId === "host") {
-        setTimeout(() => {
-          this.roomRef &&
-            this.roomRef
-              .remove()
-              .catch((err) =>
-                console.error("Szoba törlés hiba (endMultiGame):", err)
-              );
-        }, 5000);
-      }
-      this.roomRef = null;
+    // Analytics: párbaj vége
+    try {
+      const playedRounds =
+        this.session && typeof this.session.roundNumber === "number"
+          ? this.session.roundNumber
+          : null;
+      const totalRounds =
+        this.session && typeof this.session.totalRounds === "number"
+          ? this.session.totalRounds
+          : null;
+
+      trackEvent("multi_end", {
+        result,
+        playedRounds,
+        totalRounds
+      });
+    } catch (e) {
+      console.warn("Umami multi_end hiba:", e);
     }
-    this.currentRoomId = null;
-    this.myPlayerId = null;
+  },
+
+  // --- REMATCH LOGIKA (ugyanazzal az ellenféllel, ugyanabban a szobában) ---
+
+  requestRematch() {
+    if (!this.roomRef || !this.currentRoomId) {
+      alert("A párbaj szoba már lezárult, indíts új párbajt.");
+      return;
+    }
+    try {
+      this.roomRef.update({
+        rematch: {
+          status: "requested",
+          requestedBy: this.myPlayerId,
+          respondedBy: null,
+          ts: Date.now()
+        }
+      });
+      trackEvent("multi_rematch_request", {
+        by: this.myPlayerId
+      });
+      alert("Új párbaj kérése elküldve. Várakozás az ellenfélre...");
+    } catch (e) {
+      console.error("Rematch update hiba:", e);
+      alert("Nem sikerült elküldeni az új párbaj kérését.");
+    }
+  },
+
+  acceptRematch() {
+    if (!this.roomRef || !this.lastRoomData) return;
+
+    const allQuestionIds = Object.keys(this.questionIndex || {});
+    if (!allQuestionIds.length) {
+      alert("Nincs elég kérdés az új párbajhoz.");
+      this.rejectRematch(true);
+      return;
+    }
+
+    const shuffledIds = this.shuffle([...allQuestionIds]);
+    const totalRounds = Math.min(
+      CONFIG.MULTI_MAX_QUESTIONS,
+      shuffledIds.length
+    );
+    const questionsForRoom = shuffledIds.slice(0, totalRounds);
+    const seed = Math.floor(Math.random() * 1e9);
+
+    const prevMatchId = this.lastRoomData.matchId || 1;
+    const rematchInfo = this.lastRoomData.rematch || {};
+
+    this.roomRef
+      .update({
+        status: "playing",
+        seed: seed,
+        round: 1,
+        hostAnswer: "pending",
+        guestAnswer: "pending",
+        questions: questionsForRoom,
+        matchId: prevMatchId + 1,
+        rematch: {
+          status: "accepted",
+          requestedBy: rematchInfo.requestedBy || null,
+          respondedBy: this.myPlayerId,
+          ts: Date.now()
+        }
+      })
+      .then(() => {
+        trackEvent("multi_rematch_accept", {
+          by: this.myPlayerId
+        });
+      })
+      .catch((err) => {
+        console.error("Rematch accept update hiba:", err);
+        alert("Nem sikerült elindítani az új párbajt.");
+      });
+  },
+
+  rejectRematch(silent) {
+    if (!this.roomRef || !this.lastRoomData) return;
+    const rematchInfo = this.lastRoomData.rematch || {};
+    this.roomRef
+      .update({
+        rematch: {
+          status: "rejected",
+          requestedBy: rematchInfo.requestedBy || null,
+          respondedBy: this.myPlayerId,
+          ts: Date.now()
+        }
+      })
+      .then(() => {
+        trackEvent("multi_rematch_reject", {
+          by: this.myPlayerId
+        });
+        if (!silent) {
+          alert("Elutasítottad az új párbaj kérését.");
+        }
+      })
+      .catch((err) => {
+        console.error("Rematch reject update hiba:", err);
+      });
   },
 
   // --- GAME ENGINE ---
-
-  generateSessionId() {
-    const ts = Date.now().toString(36);
-    const rnd = Math.random().toString(36).substring(2, 8);
-    return `${ts}-${rnd}`;
-  },
 
   /**
    * Single + Multi közös indító.
@@ -963,8 +1109,8 @@ const app = {
     // Keverés
     const randomFunc =
       isMulti && this.seed ? seededRandom(this.seed) : Math.random;
-    let currentIndex = qList.length;
-    let randomIndex;
+    let currentIndex = qList.length,
+      randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(randomFunc() * currentIndex);
       currentIndex--;
@@ -989,46 +1135,22 @@ const app = {
             level,
             qList: this.shuffle([...qList]), // sima random gyakorláshoz
             idx: 0,
-            lives: 3,
-            isMulti: false,
-            sessionId: this.generateSessionId(),
-            answeredCount: 0
+            lives: 3
           };
+          this.showScreen("s-game");
+          this.renderQ();
 
-          // Single session indulás analitika
           trackEvent("single_start", {
             topic,
             level,
-            mode: "practice",
             totalQuestions: this.session.qList.length,
-            sessionId: this.session.sessionId
+            mode: "practice_repeat"
           });
-
-          this.showScreen("s-game");
-          this.renderQ();
         }
         return;
       }
 
-      this.session = {
-        topic,
-        level,
-        qList: toPlay,
-        idx: 0,
-        lives: 3,
-        isMulti: false,
-        sessionId: this.generateSessionId(),
-        answeredCount: 0
-      };
-
-      // Single session indulás analitika
-      trackEvent("single_start", {
-        topic,
-        level,
-        mode: "normal",
-        totalQuestions: this.session.qList.length,
-        sessionId: this.session.sessionId
-      });
+      this.session = { topic, level, qList: toPlay, idx: 0, lives: 3 };
     } else {
       // MULTI: dinamikus körszám, ne fogyjon el a kérdés
       const totalRounds = Math.min(CONFIG.MULTI_MAX_QUESTIONS, qList.length);
@@ -1042,29 +1164,42 @@ const app = {
         lives: 3,
         isMulti: true,
         roundNumber: 1,
-        totalRounds,
-        sessionId: this.generateSessionId(),
-        answeredCount: 0
+        totalRounds
       };
-
-      // Multiplayer indulás analitika
-      trackEvent("multi_start", {
-        totalRounds: this.session.totalRounds,
-        sessionId: this.session.sessionId
-      });
     }
 
     this.hasAnsweredThisRound = false;
     this.lastEvaluatedRound = 0;
     this.showScreen("s-game");
     this.renderQ();
+
+    // Analitika: session indulás
+    try {
+      if (isMulti) {
+        trackEvent("multi_session_start", {
+          totalRounds: this.session.totalRounds
+        });
+      } else {
+        trackEvent("single_start", {
+          topic,
+          level,
+          totalQuestions: this.session.qList.length,
+          mode: "normal"
+        });
+      }
+    } catch (e) {
+      console.warn("Umami start track hiba:", e);
+    }
   },
 
   renderQ() {
     const q = this.session.qList[this.session.idx];
     if (!q) {
       if (this.session.isMulti) {
-        this.endMultiGame("draw", "Elfogytak a kérdések. A párbajt lezártuk.");
+        this.endMultiGame(
+          "draw",
+          "Elfogytak a kérdések. A párbajt lezártuk."
+        );
       } else {
         this.end(true);
       }
@@ -1185,8 +1320,9 @@ const app = {
     if (this.session.isMulti && !this.hasAnsweredThisRound && this.roomRef) {
       this.hasAnsweredThisRound = true;
       const update = {};
-      update[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] =
-        "wrong";
+      update[
+        this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"
+      ] = "wrong";
       this.roomRef.update(update).catch((err) =>
         console.error("Timeout update hiba:", err)
       );
@@ -1200,8 +1336,9 @@ const app = {
     if (this.session.isMulti) {
       this.hasAnsweredThisRound = true;
       const update = {};
-      update[this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"] =
-        isOk ? "correct" : "wrong";
+      update[
+        this.myPlayerId === "host" ? "hostAnswer" : "guestAnswer"
+      ] = isOk ? "correct" : "wrong";
       if (this.roomRef) {
         this.roomRef.update(update).catch((err) =>
           console.error("Válasz update hiba:", err)
@@ -1212,19 +1349,6 @@ const app = {
       btn.innerText += " ⏳";
       this.stopTimer();
     } else {
-      // Single player logika + analitika
-      this.session.answeredCount = (this.session.answeredCount || 0) + 1;
-
-      trackEvent("single_answer", {
-        topic: this.session.topic,
-        level: this.session.level,
-        correct: isOk,
-        questionId: q.id,
-        indexInSession: this.session.idx,
-        totalAnsweredInSession: this.session.answeredCount,
-        sessionId: this.session.sessionId
-      });
-
       if (isOk) {
         this.user.streak = (this.user.streak || 0) + 1;
         this.saveProgress(q.id);
@@ -1307,18 +1431,6 @@ const app = {
     const msgEl = document.getElementById("end-msg");
     const scoreEl = document.getElementById("end-score");
 
-    // Single session lezárás analitika
-    if (!this.session.isMulti) {
-      trackEvent("single_end", {
-        topic: this.session.topic,
-        level: this.session.level,
-        totalAnswered: this.session.answeredCount || this.session.idx,
-        totalQuestionsInSession: this.session.qList.length,
-        success: !!win,
-        sessionId: this.session.sessionId
-      });
-    }
-
     // Single playernél pontszám látszik, multi esetben nem
     if (!this.session.isMulti && scoreEl) {
       scoreEl.style.display = "block";
@@ -1392,6 +1504,36 @@ const app = {
         });
       }, 150);
     }
+
+    // Analitika: single session összefoglaló
+    if (!this.session.isMulti) {
+      try {
+        const totalCount =
+          this.session && this.session.qList
+            ? this.session.qList.length
+            : 0;
+        let answeredCount = 0;
+
+        if (win) {
+          answeredCount = totalCount;
+        } else {
+          answeredCount = Math.min(
+            (this.session.idx || 0) + 1,
+            totalCount
+          );
+        }
+
+        trackEvent("single_end", {
+          topic: this.session.topic,
+          level: this.session.level,
+          win: !!win,
+          answered: answeredCount,
+          total: totalCount
+        });
+      } catch (e) {
+        console.warn("Umami single_end hiba:", e);
+      }
+    }
   },
 
   next() {
@@ -1444,7 +1586,11 @@ const app = {
   rejectChallenge() {
     const modal = document.getElementById("challenge-modal");
     if (modal) modal.classList.remove("open");
-    window.history.replaceState({}, document.title, window.location.pathname);
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
     if (this.roomRef) this.roomRef.off();
     this.currentRoomId = null;
     this.myPlayerId = null;
@@ -1537,13 +1683,11 @@ const app = {
       window.innerWidth >= 900 &&
       !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    trackEvent("open_rules", { device: isDesktop ? "desktop" : "mobile" });
-
     if (isDesktop) {
-      // Laptop / PC: PDF megnyitása teljes fülön
+      trackEvent("rules_open_desktop");
       window.open(pdfUrl, "_blank");
     } else {
-      // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
+      trackEvent("rules_open_mobile");
       this.showScreen("s-rules");
     }
   },
@@ -1567,7 +1711,6 @@ const app = {
     this.showScreen("s-menu");
     this.renderMenu();
 
-    // Mindig a főmenü tetejére ugrunk a content-ben
     const content = document.querySelector(".content");
     if (content && content.scrollTo) {
       content.scrollTo({ top: 0, behavior: "smooth" });
@@ -1594,8 +1737,8 @@ const app = {
   },
 
   shuffle(array) {
-    let currentIndex = array.length;
-    let randomIndex;
+    let currentIndex = array.length,
+      randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
