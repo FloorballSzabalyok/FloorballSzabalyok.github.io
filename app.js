@@ -1,14 +1,13 @@
-// --- APP.JS vFixed (FloorballSzabályok) ---
+// --- APP.JS vFinal (FloorballSzabályok) ---
 
 // --- KONFIGURÁCIÓ ---
 const CONFIG = {
   STORAGE_KEY: "fb_v11_lux",
   WELCOME_KEY: "fb_welcome_seen",
-  DB_URL: "database.json", // Fontos: ez a fájlnév legyen a gyökérkönyvtárban
+  DB_URL: "database.json", 
   LEVELS: ["L1", "L2", "L3"],
   MULTI_MAX_QUESTIONS: 10,
   ROUND_TIME: 30, // másodperc / kör
-  FIREBASE_URL: "https://floorball-duel-default-rtdb.firebaseio.com/" // Ha nem a teljes configot használod
 };
 
 // --- SEGÉDFÜGGVÉNYEK ---
@@ -25,7 +24,7 @@ function seededRandom(a) {
   };
 }
 
-// Egyszerű shuffle
+// Egyszerű shuffle (keverés)
 function shuffleArray(array) {
   let currentIndex = array.length, randomIndex;
   while (currentIndex !== 0) {
@@ -74,7 +73,7 @@ function initFirebaseSafe() {
   }
 }
 
-// Init futtatása
+// Init futtatása, ha betöltődött a DOM
 if (document.readyState === "loading") {
   window.addEventListener("DOMContentLoaded", initFirebaseSafe);
 } else {
@@ -122,6 +121,7 @@ const app = {
   lastEvaluatedRound: 0,
   waitingTimeoutId: null,
   deferredPrompt: null,
+  stateCurrentScreen: "s-menu",
 
   // --- INIT ---
   async init() {
@@ -132,37 +132,24 @@ const app = {
     }
 
     try {
-      // 1. Felhasználó betöltése LocalStorage-ból
       this.loadUser();
-      
-      // 2. UI Bindolása (gombok, események)
       this.bindUI();
-      
-      // 3. Téma alkalmazása
       this.applyTheme();
 
-      // 4. Adatbázis letöltése
+      // Adatbázis letöltése
       const response = await fetch(CONFIG.DB_URL);
       if (!response.ok) throw new Error(`DB hiba: ${response.status}`);
 
       const jsonData = await response.json();
       this.db = jsonData.data;
-      // Ha a JSON-ban 'topics' tömb van objektumokkal, azt használjuk, ha nincs, akkor a db kulcsait
       this.topics = jsonData.topics || Object.keys(this.db || {});
 
-      // 5. Index építése multihoz
       this.buildQuestionIndex();
-
-      // 6. Menü renderelése
       this.renderMenu();
-      
-      // 7. Welcome modal ellenőrzés
       this.checkWelcome();
-      
-      // 8. PWA install gomb
       this.initInstallButton();
 
-      // 9. URL paraméter ellenőrzés (meghívásos játék)
+      // URL paraméter ellenőrzés (meghívásos játék)
       const urlParams = new URLSearchParams(window.location.search);
       let roomId = urlParams.get("room");
       if (roomId) {
@@ -186,18 +173,6 @@ const app = {
 
   // --- UI ESEMÉNYKEZELŐK ---
   bindUI() {
-    // Biztonsági ellenőrzés, hogy léteznek-e az elemek
-    const safeAddListener = (id, func) => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener("click", func);
-    };
-
-    // Navigáció és gombok
-    // Mivel a HTML-ben inline 'onclick' attribútumok vannak (pl. onclick="app.menu()"),
-    // itt nem feltétlenül kell mindent újra bindolni, de a tisztaság kedvéért a HTML-ből
-    // érdemes lenne kivenni az inline JS-t. A jelenlegi HTML struktúráddal az inline működik,
-    // de a "Share Link" és egyéb dinamikus elemekhez kellenek a függvények.
-    
     // Globális esemény a bezárásra (multiplayer miatt)
     window.addEventListener("beforeunload", () => {
       if (this.myPlayerId === "host" && this.roomRef) {
@@ -231,7 +206,7 @@ const app = {
     } catch (e) {
       console.warn("Nem sikerült menteni az adatokat:", e);
     }
-    this.renderMenuStats(); // Frissítsük a statisztikákat mentéskor
+    // Ha nem teljes újrarajzolást akarunk, itt lehetne csak a statokat frissíteni
   },
 
   // --- TÉMA ---
@@ -259,9 +234,18 @@ const app = {
     }
   },
 
-  // --- MENÜ ÉS NAVIGÁCIÓ ---
+  // --- NAVIGÁCIÓS FÜGGVÉNYEK ---
+  
+  // Fontos: Takarító függvény, ami hiányzott
+  clearWaitingTimeout() {
+    if (this.waitingTimeoutId) {
+      clearTimeout(this.waitingTimeoutId);
+      this.waitingTimeoutId = null;
+    }
+  },
+
   toggleScreen(id) {
-    this.showScreen(id); // Kompatibilitás
+    this.showScreen(id);
   },
 
   showScreen(id) {
@@ -293,6 +277,8 @@ const app = {
     }
     this.currentRoomId = null;
     this.myPlayerId = null;
+    
+    // Itt volt a hiba korábban: ezeknek a függvényeknek létezniük kell
     this.clearWaitingTimeout();
     this.stopTimer();
 
@@ -420,7 +406,6 @@ const app = {
       container.appendChild(card);
     });
 
-    // Globális statisztikák frissítése
     this.updateGlobalStats(globalAnswered, globalTotal, allCompleted);
   },
 
@@ -446,14 +431,6 @@ const app = {
     if (masterInfo) {
       masterInfo.style.display = (allCompleted && total > 0) ? "flex" : "none";
     }
-  },
-  
-  // Segédfüggvény statisztikák frissítésére mentéskor (ha nincs teljes újrarajzolás)
-  renderMenuStats() {
-      // Ezt hívhatjuk meg saveUser után, hogy ne kelljen az egész menüt újrarenderelni,
-      // ha csak a fejléc számait akarjuk frissíteni. 
-      // Egyszerűsítés végett most újrahívjuk a renderMenu-t a menüben, de játékközben elég a statokat.
-      // A renderMenu megcsinálja a számítást.
   },
 
   showLevels(topicId) {
@@ -489,6 +466,7 @@ const app = {
         </button>
       `;
 
+      // A kártyára kattintás is indítsa el, ha nyitva van
       card.addEventListener("click", () => {
         if (unlocked) this.start(topicId, level, false);
       });
@@ -518,8 +496,7 @@ const app = {
 
     // Keverés
     const randomFunc = (isMulti && this.seed) ? seededRandom(this.seed) : Math.random;
-    // Saját shuffle logika adaptálása a randomFunc-hoz, vagy egyszerű tömbkeverés single-ben
-    // Single-ben jó a sima shuffleArray
+    
     if (!isMulti) {
         shuffleArray(qList);
     } else {
@@ -538,9 +515,11 @@ const app = {
 
       if (toPlay.length === 0) {
         if (confirm("Már megoldottad az összes kérdést ezen a szinten.\nIndítsd újra gyakorlás módban?")) {
-          // Újraindítás teljes listával
+          // Újraindítás teljes listával, keverve
+          const fullList = [...(this.db[topic][level] || [])];
+          shuffleArray(fullList);
           this.session = {
-            topic, level, qList: shuffleArray([...qList]), idx: 0, lives: 3, isMulti: false
+            topic, level, qList: fullList, idx: 0, lives: 3, isMulti: false
           };
           this.showScreen("s-game");
           this.renderQ();
@@ -567,11 +546,11 @@ const app = {
   renderQ() {
     const q = this.session.qList[this.session.idx];
     if (!q) {
-      this.end(true); // vagy endMultiGame
+      this.end(true); 
       return;
     }
 
-    // UI elemek beállítása (Timer, Lives, stb.)
+    // UI elemek beállítása
     const livesEl = document.getElementById("g-lives");
     const timerBar = document.getElementById("timer-bar");
     const multiBadge = document.getElementById("multi-badge");
@@ -618,9 +597,8 @@ const app = {
     // Válaszok keverése
     let indices = [0, 1, 2];
     const seedBase = this.session.isMulti ? (this.seed + this.session.idx) : Math.random();
-    // Egyszerűsített keverés:
+    
     if(this.session.isMulti) {
-        // Multi esetén ugyanaz a sorrend kell
         const rnd = seededRandom(seedBase);
         for (let i = indices.length - 1; i > 0; i--) {
             const j = Math.floor(rnd() * (i + 1));
@@ -733,7 +711,6 @@ const app = {
     const iconEl = document.getElementById("end-icon");
 
     if (this.session.isMulti) {
-        // Multi end handled in endMultiGame, but safeguard here
         if(scoreEl) scoreEl.style.display = "none";
     } else {
         if(scoreEl) {
@@ -806,7 +783,6 @@ const app = {
   },
   
   showRules() {
-    // PDF megnyitás logika
     const isDesktop = window.innerWidth >= 900 && !/Android|iPhone/i.test(navigator.userAgent);
     if (isDesktop) {
         window.open("Floorball_Jatekszabalyok_2022_FINAL.pdf", "_blank");
@@ -827,7 +803,7 @@ const app = {
     }
   },
 
-  // --- MULTIPLAYER (RÖVIDÍTVE, HOGY MŰKÖDJÖN) ---
+  // --- MULTIPLAYER ---
   startChallengeMode() {
     if (typeof firebase === "undefined" || !firebase.apps.length) {
       alert("A multiplayerhez internet szükséges!");
@@ -940,7 +916,7 @@ const app = {
       }
       
       if(data.status === "finished") {
-          // Itt lehetne kezelni a rematch-et, most egyszerűsítve:
+          // Rematch logika helye
       }
   },
 
@@ -998,6 +974,7 @@ const app = {
       if(this.roomRef) this.roomRef.update({ status: "finished" });
   },
 
+  // --- IDŐZÍTŐK ---
   startTimer() {
       this.stopTimer();
       const fill = document.getElementById("timer-fill");
@@ -1031,7 +1008,7 @@ const app = {
       }
   },
 
-  // PWA Install
+  // --- PWA INSTALL ---
   initInstallButton() {
       const btn = document.getElementById("install-btn");
       window.addEventListener("beforeinstallprompt", (e) => {
@@ -1046,13 +1023,8 @@ const app = {
           this.deferredPrompt = null;
           document.getElementById("install-btn").style.display = "none";
       }
+  },
+  closeIosInstall() {
+      document.getElementById("ios-install-modal").classList.remove("open");
   }
 };
-
-// --- APP INDÍTÁSA ---
-// Ha már betöltődött a DOM, indítsuk, ha nem, várjunk
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => app.init());
-} else {
-    app.init();
-}
