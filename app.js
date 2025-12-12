@@ -1,4 +1,4 @@
-// --- APP.JS vFinal (FloorballSzabályok) ---
+// --- APP.JS vFixed (FloorballSzabályok) ---
 
 // --- KONFIGURÁCIÓ ---
 const CONFIG = {
@@ -40,7 +40,11 @@ const Analytics = {
   track(eventName, eventData) {
     try {
       if (typeof window !== "undefined" && window.umami && typeof window.umami.track === "function") {
-        window.umami.track(eventName, eventData);
+        if (eventData) {
+          window.umami.track(eventName, eventData);
+        } else {
+          window.umami.track(eventName);
+        }
       }
     } catch (e) {
       console.warn("Umami track hiba:", e);
@@ -166,7 +170,7 @@ const app = {
     } catch (error) {
       console.error("Kritikus hiba az init során:", error);
       if (container) {
-        container.innerHTML = `Hiba az adatok betöltésekor (${error.message}). <br><br> Ellenőrizd, hogy fut-e a szerver (ha helyben vagy), vagy van-e internetkapcsolat.`;
+        container.innerHTML = `Hiba az adatok betöltésekor (${error.message}). <br><br> Ellenőrizd, hogy a <code>database.json</code> fájl elérhető-e a szerveren.`;
       }
     }
   },
@@ -206,7 +210,19 @@ const app = {
     } catch (e) {
       console.warn("Nem sikerült menteni az adatokat:", e);
     }
-    // Ha nem teljes újrarajzolást akarunk, itt lehetne csak a statokat frissíteni
+    this.renderMenuStats();
+  },
+
+  // Statisztikák frissítése a felületen mentés után
+  renderMenuStats() {
+    // Újrarajzoljuk a menüt, hogy a százalékok frissüljenek
+    // (Ha épp nem a menüben vagyunk, ez akkor is lefuthat a háttérben, vagy ellenőrizhetjük a screen-t)
+    if(this.stateCurrentScreen === "s-menu") {
+      this.renderMenu();
+    } else {
+      // Ha játékban vagyunk, frissítjük a globális statisztikát a fejlécben
+      this.calculateAndShowGlobalStats();
+    }
   },
 
   // --- TÉMA ---
@@ -236,7 +252,7 @@ const app = {
 
   // --- NAVIGÁCIÓS FÜGGVÉNYEK ---
   
-  // Fontos: Takarító függvény, ami hiányzott
+  // Fontos: Takarító függvény (Timer), ami hiányzott
   clearWaitingTimeout() {
     if (this.waitingTimeoutId) {
       clearTimeout(this.waitingTimeoutId);
@@ -266,6 +282,7 @@ const app = {
     this.stateCurrentScreen = id;
   },
 
+  // Főmenübe lépés - ez hívja a home gomb és a "Vissza" gomb is
   menu() {
     // Takarítás, ha játékból jövünk vissza
     if (this.roomRef) {
@@ -278,7 +295,6 @@ const app = {
     this.currentRoomId = null;
     this.myPlayerId = null;
     
-    // Itt volt a hiba korábban: ezeknek a függvényeknek létezniük kell
     this.clearWaitingTimeout();
     this.stopTimer();
 
@@ -343,9 +359,9 @@ const app = {
     if (!container) return;
 
     container.innerHTML = "";
-    let allCompleted = true;
-    let globalTotal = 0;
-    let globalAnswered = 0;
+    
+    // Kiszámoljuk és kirajzoljuk a kártyákat
+    this.calculateAndShowGlobalStats();
 
     (this.topics || []).forEach((topicMeta, index) => {
       const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
@@ -368,9 +384,6 @@ const app = {
         topicAnswered += answered;
       });
 
-      globalTotal += topicTotal;
-      globalAnswered += topicAnswered;
-
       const topicPercent = topicTotal > 0 ? Math.round((topicAnswered / topicTotal) * 100) : 0;
       
       const l1Done = levelStats["L1"].total > 0 && levelStats["L1"].answered >= levelStats["L1"].total;
@@ -378,7 +391,6 @@ const app = {
       const l3Done = levelStats["L3"].total > 0 && levelStats["L3"].answered >= levelStats["L3"].total;
       
       const mastered = l1Done && l2Done && l3Done && topicTotal > 0;
-      if (!mastered) allCompleted = false;
 
       const card = document.createElement("div");
       card.className = "topic-card";
@@ -405,11 +417,42 @@ const app = {
 
       container.appendChild(card);
     });
-
-    this.updateGlobalStats(globalAnswered, globalTotal, allCompleted);
   },
 
-  updateGlobalStats(answered, total, allCompleted) {
+  // Új segédfüggvény: csak a statisztikák kiszámítása és frissítése
+  calculateAndShowGlobalStats() {
+    let globalTotal = 0;
+    let globalAnswered = 0;
+    let allCompleted = true;
+
+    (this.topics || []).forEach((topicMeta) => {
+        const topicId = typeof topicMeta === "string" ? topicMeta : topicMeta.id;
+        const topicData = this.db[topicId] || {};
+        
+        // Ellenőrizzük, hogy ez a téma "mastered"-e
+        let topicMastered = true;
+
+        CONFIG.LEVELS.forEach((level) => {
+            const qArr = topicData[level] || [];
+            const total = qArr.length;
+            const solvedIds = (this.user.progress[topicId]?.[level] || []);
+            const answered = Math.min(solvedIds.length, total);
+
+            globalTotal += total;
+            globalAnswered += answered;
+            
+            if(total > 0 && answered < total) {
+                topicMastered = false;
+            }
+        });
+        
+        if(!topicMastered) allCompleted = false;
+    });
+
+    this.updateGlobalStatsUI(globalAnswered, globalTotal, allCompleted);
+  },
+
+  updateGlobalStatsUI(answered, total, allCompleted) {
     const statAnswered = document.getElementById("stat-answered");
     const statTotal = document.getElementById("stat-total");
     const statStreak = document.getElementById("stat-streak");
@@ -466,7 +509,6 @@ const app = {
         </button>
       `;
 
-      // A kártyára kattintás is indítsa el, ha nyitva van
       card.addEventListener("click", () => {
         if (unlocked) this.start(topicId, level, false);
       });
@@ -916,7 +958,7 @@ const app = {
       }
       
       if(data.status === "finished") {
-          // Rematch logika helye
+          // Rematch logika helye lenne
       }
   },
 
