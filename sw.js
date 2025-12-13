@@ -1,5 +1,5 @@
 sw.js
-const CACHE_NAME = 'fb-quiz-67'; /* VERZIÓ FRISSÍTVE (PWA telepíthetőség: index.html manifest link + app.js install init korábban) */
+const CACHE_NAME = 'fb-quiz-68'; /* VERZIÓ FRISSÍTVE (PWA telepíthetőség: index.html manifest link + app.js install init korábban) */
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
