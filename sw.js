@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fb-quiz-v47'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
+const CACHE_NAME = 'fb-quiz-63'; /* VERZIÓ FRISSÍTVE A VÁLTOZTATÁS MIATT */
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -41,8 +41,8 @@ self.addEventListener('install', (event) => {
 /**
  * FETCH
  * - Saját domainre:
- *    - database.json: network-first, cache fallback
- *    - minden más: cache-first, network fallback
+ * - database.json: network-first, cache fallback
+ * - minden más: cache-first, network fallback
  * - Külső domainek (Firebase, Umami, Google, stb.): pass-through (nincs cache)
  */
 self.addEventListener('fetch', (event) => {
@@ -109,20 +109,3 @@ self.addEventListener('activate', (event) => {
   // Azonnal aktiváljuk az új verziót minden nyitott lapon
   self.clients.claim();
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

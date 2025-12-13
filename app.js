@@ -706,7 +706,7 @@ const Network = {
       btnMenu.onclick = () => this.menu();
       actions.appendChild(btnMenu);
 
-      this.autoScrollToPrimaryAction(actions, btnMenu);
+      this.autoScrollToPrimaryAction(actions, btnMenu, true);
     }
 
     // Umami – párbaj statisztika (host oldaláról elég)
@@ -1314,7 +1314,7 @@ const UI = {
     this.session.isMulti = false;
 
     // Mindig a főmenü tetejére ugrunk a content-ben
-    const content = document.querySelector(".content");
+    const content = this._getActiveScrollContainer();
     if (content && content.scrollTo) {
       content.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1338,7 +1338,14 @@ const UI = {
       .forEach((s) => s.classList.remove("active"));
     const el = document.getElementById(id);
     if (el) el.classList.add("active");
-    window.scrollTo(0, 0);
+
+    // Scroll container reset – content-et kell görgetni, nem window-t
+    const scrollContainer = this._getActiveScrollContainer();
+    if (scrollContainer && scrollContainer.scrollTo) {
+      scrollContainer.scrollTo(0, 0);
+    } else {
+      window.scrollTo(0, 0);
+    }
   },
 
   initScrollGuards() {
@@ -1352,7 +1359,7 @@ const UI = {
     };
 
     window.addEventListener("wheel", mark, { passive: true });
-    window.addEventListener("touchstart", mark, { passive: true });
+    // JAVÍTÁS: A touchstart eseményt kivettük, hogy a sima "tap" (választás) ne tiltsa le a görgetést
     window.addEventListener("touchmove", mark, { passive: true });
     window.addEventListener("keydown", mark);
   },
@@ -1380,31 +1387,30 @@ const UI = {
 
   _getActiveScrollContainer() {
     // A képernyők .content class-szal rendelkeznek és overflow-y: auto
-    return (
-      document.querySelector(".screen.active.content") ||
-      document.querySelector(".content.active") ||
-      document.scrollingElement ||
-      document.documentElement
-    );
+    // A DOM struktúra alapján a <main class="content"> a valódi görgethető elem
+    return document.querySelector(".content") || document.documentElement;
   },
 
-  autoScrollToPrimaryAction(contextEl, primaryEl) {
-    // Determinisztikus, mobilbarát auto-scroll:
-    // - ha a primer gomb (KÖVETKEZŐ/BEFEJEZÉS/MENU) kilóg a látható területből, görgessünk rá
-    // - különben (ha szükséges) a kontextus (pl. feedback) kerüljön látható helyre
+  autoScrollToPrimaryAction(contextEl, primaryEl, force = false) {
+    // Determinisztikus, mobilbarát auto-scroll
     if (!primaryEl) return;
 
-    // Ne harcoljunk aktív felhasználói görgetéssel
-    const now = Date.now();
-    if (now - (this._lastUserInputTs || 0) < 250) return;
+    // Ha kényszerített (pl. gombnyomás után), akkor ne nézzük a user inputot azonnal
+    if (!force) {
+        const now = Date.now();
+        if (now - (this._lastUserInputTs || 0) < 250) return;
+    }
 
     const behavior = this._prefersReducedMotion() ? "auto" : "smooth";
-    const margin = 24;
+    const margin = 120; // NAGYOBB margó (120px), hogy hamarabb görgessen
 
-    this._afterDOMUpdate(() => {
+    const performScroll = () => {
       try {
-        const now2 = Date.now();
-        if (now2 - (this._lastUserInputTs || 0) < 250) return;
+        // Force esetén is ellenőrizzük, de lazábban
+        if (!force) {
+            const now2 = Date.now();
+            if (now2 - (this._lastUserInputTs || 0) < 250) return;
+        }
 
         const container = this._getActiveScrollContainer();
         const cRect =
@@ -1414,15 +1420,18 @@ const UI = {
 
         const pRect = primaryEl.getBoundingClientRect();
 
+        // Ellenőrizzük, hogy a gomb kilóg-e a containerből
         const primaryBelow = pRect.bottom > cRect.bottom - margin;
         const primaryAbove = pRect.top < cRect.top + margin;
 
-        if (primaryBelow || primaryAbove) {
-          primaryEl.scrollIntoView({ behavior, block: "center" });
+        if (primaryBelow || primaryAbove || force) {
+          // JAVÍTÁS: "center", hogy biztosan látszódjon a gomb, ha kényszerítjük
+          const blockPos = force ? "center" : "nearest";
+          primaryEl.scrollIntoView({ behavior, block: blockPos });
           return;
         }
 
-        if (contextEl) {
+        if (contextEl && !force) {
           const ctxRect = contextEl.getBoundingClientRect();
           const ctxAbove = ctxRect.bottom < cRect.top + margin;
           const ctxBelow = ctxRect.top > cRect.bottom - margin;
@@ -1431,9 +1440,15 @@ const UI = {
           }
         }
       } catch (e) {
-        // Csöndben elengedjük – a játéklogikát semmiképp ne akassza meg
+        // Csöndben elengedjük
       }
-    });
+    };
+
+    // Azonnali próba + késleltetett biztonsági próba
+    this._afterDOMUpdate(performScroll);
+    if (force) {
+      setTimeout(performScroll, 300);
+    }
   },
 
 };
@@ -1854,7 +1869,10 @@ const Game = {
 
     // Auto-scroll: magyarázat + Következő/BEFEJEZÉS gomb legyen képernyőn mobilon is
     const nextBtn = feed.querySelector(".btn-main--next");
-    this.autoScrollToPrimaryAction(feed, nextBtn);
+    setTimeout(() => {
+        // Kényszerített görgetés (force=true), mert a felhasználó gombot nyomott
+        this.autoScrollToPrimaryAction(feed, nextBtn, true);
+    }, 150); // Megnövelt késleltetés a renderelés biztosítására
   },
 
   end(win) {
@@ -1941,7 +1959,7 @@ const Game = {
       btnMenu.onclick = () => this.menu();
       actions.appendChild(btnMenu);
 
-      this.autoScrollToPrimaryAction(actions, btnMenu);
+      this.autoScrollToPrimaryAction(actions, btnMenu, true);
     }
   },
 
@@ -1949,7 +1967,10 @@ const Game = {
     this.session.idx++;
     if (this.session.idx < this.session.qList.length) {
       this.renderQ();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const container = this._getActiveScrollContainer();
+      if (container && container.scrollTo) {
+        container.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } else {
       this.end(true);
     }
