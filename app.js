@@ -1,4 +1,3 @@
-app.js
 // --- FIREBASE KONFIGURÁCIÓ ---
 const firebaseConfig = {
   apiKey: "AIzaSyCAVPTDjt0nAGrcu-S0XAn87_6g6BfUgvg",
@@ -1542,10 +1541,6 @@ const Game = {
     // PWA telepíthetőséghez: SW regisztráció minél előbb
     this.initServiceWorker();
 
-    // PWA telepíthetőséghez: install gomb + beforeinstallprompt listener minél előbb
-    // (Androidon a beforeinstallprompt esemény "lekéshető", ezért ne várjunk DB fetch-re)
-    this.initInstallButton();
-
     try {
       const response = await fetch(CONFIG.DB_URL);
       if (!response.ok) throw new Error("DB hiba");
@@ -1559,6 +1554,7 @@ const Game = {
       this.applyTheme();
       this.renderMenu();
       this.checkWelcome();
+      this.initInstallButton();
       this.initScrollGuards();
 
       // Globális takarító listener (ha host zárja be)
