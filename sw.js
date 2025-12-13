@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fb-quiz-65'; /* VERZIÓ FRISSÍTVE (PWA telepíthetőség: index.html + app.js változás) */
+const CACHE_NAME = 'fb-quiz-66'; /* VERZIÓ FRISSÍTVE (PWA telepíthetőség: index.html + app.js változás) */
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
