@@ -1187,6 +1187,31 @@ const UI = {
     }
   },
 
+  // --- PWA / INSTALL / SERVICE WORKER ---
+
+  initServiceWorker() {
+    // PWA telepíthetőséghez szükséges: Service Worker regisztráció
+    if (this._swRegistered) return;
+    this._swRegistered = true;
+
+    try {
+      if (!("serviceWorker" in navigator)) return;
+
+      navigator.serviceWorker
+        .register("./sw.js", { scope: "./" })
+        .then((reg) => {
+          try {
+            if (reg && typeof reg.update === "function") reg.update();
+          } catch (e) {}
+        })
+        .catch((err) => {
+          console.warn("[PWA] Service Worker regisztráció sikertelen:", err);
+        });
+    } catch (e) {
+      console.warn("[PWA] Service Worker init hiba:", e);
+    }
+  },
+
   // --- MULTIPLAYER (KÖR-ALAPÚ, DETERMINISZTIKUS KÉRDÉSLISTÁVAL) ---
 
   initInstallButton() {
@@ -1203,6 +1228,14 @@ const UI = {
       if (btn) btn.style.display = "block";
     });
     if (isIos && btn) btn.style.display = "block";
+
+    // Telepítés után (ahol támogatott), rejtsük el az install gombot
+    window.addEventListener("appinstalled", () => {
+      try {
+        const b = document.getElementById("install-btn");
+        if (b) b.style.display = "none";
+      } catch (e) {}
+    });
   },
 
   triggerInstall() {
@@ -1504,6 +1537,9 @@ const Game = {
       container.innerHTML =
         '<div style="text-align:center; padding:20px;">Adatok betöltése...</div>';
     }
+
+    // PWA telepíthetőséghez: SW regisztráció minél előbb
+    this.initServiceWorker();
 
     try {
       const response = await fetch(CONFIG.DB_URL);
