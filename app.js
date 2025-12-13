@@ -200,7 +200,6 @@ const State = {
       }
     }
   }
-
 };
 
 // --- MODULE: DB (database.json) ---
@@ -239,8 +238,7 @@ const DB = {
 
   getTopicName(topicId) {
     return TOPIC_LABELS[topicId] || topicId;
-  },
-
+  }
 };
 
 // --- MODULE: Network (Firebase multiplayer) ---
@@ -890,7 +888,6 @@ const Network = {
    * Single + Multi közös indító.
    * Multi esetén, ha questionIds adott, akkor abból építjük a qList-et (room.questions).
    */
-
 };
 
 // --- MODULE: UI (DOM + screens + UX helpers) ---
@@ -1279,16 +1276,46 @@ const UI = {
       !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     this.track("rules_open", {
-      mode: isDesktop ? "new_tab" : "in_app"
+      mode: isDesktop ? "new_tab" : "in_app_inline"
     });
 
     if (isDesktop) {
       // Laptop / PC: PDF megnyitása teljes fülön
       window.open(pdfUrl, "_blank");
-    } else {
-      // Mobil / tablet: marad a beépített mobil nézet + "Megnyitás" gomb
-      this.showScreen("s-rules");
+      return;
     }
+
+    // MOBIL/TABLET: in-app (könnyű vissza) — iframe megjelenítése
+    document.body.classList.add("rules-inline");
+
+    // Ha van iframe a DOM-ban (.pdf-desktop-view), betöltjük oda a PDF-et
+    const frame = document.querySelector(".pdf-desktop-view");
+    if (frame) {
+      // toolbar=0 trükk néha működik, néha nem – marad tisztán a PDF URL
+      frame.setAttribute("src", pdfUrl);
+    }
+
+    this.showScreen("s-rules");
+
+    // Injektálunk egy "Vissza" gombot a rules headerbe, ha még nincs
+    const header = document.querySelector("#s-rules .rules-header");
+    if (header && !header.querySelector(".rules-back-btn")) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "icon-btn rules-back-btn";
+      btn.setAttribute("aria-label", "Vissza a főmenübe");
+      // ikon fallback: ha nincs icon font, akkor is ok
+      btn.innerHTML = `<span style="font-size:1.2rem; font-weight:900;">←</span>`;
+      btn.onclick = () => this.menu();
+      header.insertAdjacentElement("afterbegin", btn);
+    }
+
+    // Biztos top pozíció (ne maradjon lent a scroll)
+    this._afterDOMUpdate(() => {
+      const content = this._getActiveScrollContainer();
+      if (content && content.scrollTo) content.scrollTo({ top: 0, behavior: "auto" });
+      window.scrollTo(0, 0);
+    });
   },
 
   showMasterScreen() {
@@ -1313,11 +1340,23 @@ const UI = {
     // Multi flag reset, hogy új párbaj esetén ne akadjon el
     this.session.isMulti = false;
 
-    // Mindig a főmenü tetejére ugrunk a content-ben
-    const content = this._getActiveScrollContainer();
-    if (content && content.scrollTo) {
-      content.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // (1) Garantált felgörgetés: content + window is (view transition + DOM update után is)
+    this._afterDOMUpdate(() => {
+      const content = this._getActiveScrollContainer();
+      try {
+        if (content && content.scrollTo) {
+          content.scrollTo({ top: 0, behavior: "auto" });
+        } else {
+          window.scrollTo(0, 0);
+        }
+        // Biztonsági extra: ha valami mégis beakad, egy második kör
+        requestAnimationFrame(() => {
+          const c2 = this._getActiveScrollContainer();
+          if (c2 && c2.scrollTo) c2.scrollTo({ top: 0, behavior: "auto" });
+          window.scrollTo(0, 0);
+        });
+      } catch (e) {}
+    });
 
     this.track("menu_view");
   },
@@ -1338,6 +1377,11 @@ const UI = {
       .forEach((s) => s.classList.remove("active"));
     const el = document.getElementById(id);
     if (el) el.classList.add("active");
+
+    // Ha kilépünk a szabálykönyvből, állítsuk vissza a normál layoutot
+    if (id !== "s-rules") {
+      document.body.classList.remove("rules-inline");
+    }
 
     // Scroll container reset – content-et kell görgetni, nem window-t
     const scrollContainer = this._getActiveScrollContainer();
@@ -1449,8 +1493,7 @@ const UI = {
     if (force) {
       setTimeout(performScroll, 300);
     }
-  },
-
+  }
 };
 
 // --- MODULE: Game (quiz flow controller) ---
@@ -1990,8 +2033,7 @@ const Game = {
       ];
     }
     return array;
-  },
-
+  }
 };
 
 
